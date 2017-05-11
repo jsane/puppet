@@ -3,12 +3,12 @@ sudo: false
 bundler_args: --without development extra
 before_script:
   - echo $TRAVIS_BUILD_DIR
-  - ls -l $TRAVIS_BUILD_DIR
+  - ls -l $TRAVIS_BUILD_DIR/ext
   #- chmod +x $TRAVIS_BUILD_DIR/ext/travisci/rubosecscan.sh
   #- $TRAVIS_BUILD_DIR/ext/travisci/rubosecscan.sh
 script:
   - echo $TRAVIS_BUILD_DIR
-  - ls -l $TRAVIS_BUILD_DIR
+  - ls -l $TRAVIS_BUILD_DIR/ext/travisci
   # - "bundle exec rake $CHECK"
   # if [ "$ext" == "clj" ]; then
 notifications:
