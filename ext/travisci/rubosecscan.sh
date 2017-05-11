@@ -1,3 +1,3 @@
-if [ "$CHECK" == "rubocop"]; then 
+if [ "$CHECK" == "rubocop" ]; then 
 	cd $TRAVIS_BUILD_DIR && rubocop
 fi
