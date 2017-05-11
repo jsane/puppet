@@ -7,7 +7,10 @@ before_script:
   #- chmod +x $TRAVIS_BUILD_DIR/ext/travisci/rubosecscan.sh
   #- $TRAVIS_BUILD_DIR/ext/travisci/rubosecscan.sh
 script:
-  - "bundle exec rake $CHECK"
+  - echo $TRAVIS_BUILD_DIR
+  - ls -l $TRAVIS_BUILD_DIR
+  # - "bundle exec rake $CHECK"
+  # if [ "$ext" == "clj" ]; then
 notifications:
   email: false
 rvm:
