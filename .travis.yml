@@ -9,6 +9,8 @@ before_script:
 script:
   - echo $TRAVIS_BUILD_DIR
   - ls -l $TRAVIS_BUILD_DIR/ext/travisci
+  #- chmod +x $TRAVIS_BUILD_DIR/ext/travisci/rubosecscan.sh
+  - if [ $CHECK == "rubocop"]; then $TRAVIS_BUILD_DIR/ext/travisci/rubosecscan.sh end
   # - "bundle exec rake $CHECK"
   # if [ "$ext" == "clj" ]; then
 notifications:
