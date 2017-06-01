@@ -79,6 +79,11 @@ class PAnyType < TypedModelObject
     @type = Pcore::create_object_type(loader, ir, self, 'Pcore::AnyType', 'Any', EMPTY_HASH)
   end
 
+  def self.create(*args)
+    # NOTE! Important to use self::DEFAULT and not just DEFAULT since the latter yields PAnyType::DEFAULT
+    args.empty? ? self::DEFAULT : new(*args)
+  end
+
   # Accept a visitor that will be sent the message `visit`, once with `self` as the
   # argument. The visitor will then visit all types that this type contains.
   #
@@ -319,6 +324,13 @@ class PAnyType < TypedModelObject
     raise ArgumentError.new("Creation of new instance of type '#{instance.to_s}' is not supported")
   end
 
+  # Answers the question if instances of this type can represent themselves as a string that
+  # can then be passed to the create method
+  #
+  # @return [Boolean] wether or not the instance has a canonical string representation
+  def roundtrip_with_string?
+    false
+  end
 
   # The default instance of this type. Each type in the type system has this constant
   # declared.
@@ -647,11 +659,15 @@ class PScalarType < PAnyType
   def instance?(o, guard = nil)
     if o.is_a?(String) || o.is_a?(Numeric) || o.is_a?(TrueClass) || o.is_a?(FalseClass) || o.is_a?(Regexp)
       true
-    elsif o.is_a?(Array) || o.is_a?(Hash) || o.is_a?(PAnyType) || o.is_a?(NilClass)
+    elsif o.instance_of?(Array) || o.instance_of?(Hash) || o.is_a?(PAnyType) || o.is_a?(NilClass)
       false
     else
       assignable?(TypeCalculator.infer(o))
     end
+  end
+
+  def roundtrip_with_string?
+    true
   end
 
   DEFAULT = PScalarType.new
@@ -1196,7 +1212,8 @@ class PCollectionType < PAnyType
   end
 
   def instance?(o, guard = nil)
-    if o.is_a?(Array) || o.is_a?(Hash)
+    # The inferred type of a class derived from Array or Hash is either Runtime or Object. It's not assignable to the Collection type.
+    if o.instance_of?(Array) || o.instance_of?(Hash)
       @size_type.nil? || @size_type.instance?(o.size)
     else
       false
@@ -1871,7 +1888,8 @@ class PStructType < PAnyType
   end
 
   def instance?(o, guard = nil)
-    return false unless o.is_a?(Hash)
+    # The inferred type of a class derived from Hash is either Runtime or Object. It's not assignable to the Struct type.
+    return false unless o.instance_of?(Hash)
     matched = 0
     @elements.all? do |e|
       key = e.name
@@ -2043,7 +2061,8 @@ class PTupleType < PAnyType
   end
 
   def instance?(o, guard = nil)
-    return false unless o.is_a?(Array)
+    # The inferred type of a class derived from Array is either Runtime or Object. It's not assignable to the Tuple type.
+    return false unless o.instance_of?(Array)
     if @size_type
       return false unless @size_type.instance?(o.size, guard)
     else
@@ -2372,7 +2391,8 @@ class PArrayType < PCollectionType
   end
 
   def instance?(o, guard = nil)
-    return false unless o.is_a?(Array)
+    # The inferred type of a class derived from Array is either Runtime or Object. It's not assignable to the Array type.
+    return false unless o.instance_of?(Array)
     return false unless o.all? {|element| @element_type.instance?(element, guard) }
     size_t = size_type
     size_t.nil? || size_t.instance?(o.size, guard)
@@ -2521,7 +2541,8 @@ class PHashType < PCollectionType
   end
 
   def instance?(o, guard = nil)
-    return false unless o.is_a?(Hash)
+    # The inferred type of a class derived from Hash is either Runtime or Object. It's not assignable to the Hash type.
+    return false unless o.instance_of?(Hash)
     if o.keys.all? {|key| @key_type.instance?(key, guard) } && o.values.all? {|value| @value_type.instance?(value, guard) }
       size_t = size_type
       size_t.nil? || size_t.instance?(o.size, guard)

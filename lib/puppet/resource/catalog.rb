@@ -82,7 +82,7 @@ class Puppet::Resource::Catalog < Puppet::Graph::SimpleGraph
     tag(*classes)
   end
 
-  # Returns [typename, title] when given a String with "Type[title]". 
+  # Returns [typename, title] when given a String with "Type[title]".
   # Returns [nil, nil] if '[' ']' not detected.
   #
   def title_key_for_ref( ref )
@@ -210,13 +210,6 @@ class Puppet::Resource::Catalog < Puppet::Graph::SimpleGraph
   #   The report object to log this transaction to. This is optional,
   #   and the resulting transaction will create a report if not
   #   supplied.
-  # @option options [Array[String]] :tags
-  #   Tags used to filter the transaction. If supplied then only
-  #   resources tagged with any of these tags will be evaluated.
-  # @option options [Boolean] :ignoreschedules
-  #   Ignore schedules when evaluating resources
-  # @option options [Boolean] :for_network_device
-  #   Whether this catalog is for a network device
   #
   # @return [Puppet::Transaction] the transaction created for this
   #   application
@@ -431,9 +424,8 @@ class Puppet::Resource::Catalog < Puppet::Graph::SimpleGraph
     end
 
     if resources = data['resources']
-      rich_data_enabled = Puppet[:rich_data] || result.environment_instance && result.environment_instance.rich_data?
       result.add_resource(*resources.collect do |res|
-        Puppet::Resource.from_data_hash(res, rich_data_enabled)
+        Puppet::Resource.from_data_hash(res)
       end)
     end
 
@@ -485,24 +477,16 @@ class Puppet::Resource::Catalog < Puppet::Graph::SimpleGraph
       h
     end
 
-    resources = if @resources.empty?
-        []
-      elsif environment_instance.rich_data?
-        @resources.collect { |v| @resource_table[v].to_data_hash(true) }
-      else
-        @resources.collect { |v| @resource_table[v].to_data_hash }
-      end
-
     {
-      'tags'      => tags,
+      'tags'      => tags.to_a,
       'name'      => name,
       'version'   => version,
       'code_id'   => code_id,
       'catalog_uuid' => catalog_uuid,
       'catalog_format' => catalog_format,
       'environment'  => environment.to_s,
-      'resources' => resources,
-      'edges'     => edges.   collect { |e| e.to_data_hash },
+      'resources' => @resources.map { |v| @resource_table[v].to_data_hash },
+      'edges'     => edges.map { |e| e.to_data_hash },
       'classes'   => classes,
     }.merge(metadata_hash.empty? ?
       {} : {'metadata' => metadata_hash}).merge(recursive_metadata_hash.empty? ?

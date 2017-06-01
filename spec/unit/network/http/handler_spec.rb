@@ -68,7 +68,7 @@ describe Puppet::Network::HTTP::Handler do
 
       res_body = JSON(res[:body])
 
-      expect(res[:content_type_header]).to eq("application/json")
+      expect(res[:content_type_header]).to eq("application/json; charset=utf-8")
       expect(res_body["issue_kind"]).to eq("HANDLER_NOT_FOUND")
       expect(res_body["message"]).to eq("Not Found: No route for GET /vtest/foo")
       expect(res[:status]).to eq(404)
@@ -92,7 +92,7 @@ describe Puppet::Network::HTTP::Handler do
 
       res_body = JSON(res[:body])
 
-      expect(res[:content_type_header]).to eq("application/json")
+      expect(res[:content_type_header]).to eq("application/json; charset=utf-8")
       expect(res_body["issue_kind"]).to eq(Puppet::Network::HTTP::Issues::RUNTIME_ERROR.to_s)
       expect(res_body["message"]).to eq("Server Error: the sky is falling!")
       expect(res[:status]).to eq(500)
@@ -139,7 +139,7 @@ describe Puppet::Network::HTTP::Handler do
     it "should still find the correct format if content type contains charset information" do
       request = Puppet::Network::HTTP::Request.new({ 'content-type' => "text/plain; charset=UTF-8" },
                                                    {}, 'GET', '/', nil)
-      expect(request.format).to eq("s")
+      expect(request.formatter.name).to eq(:s)
     end
 
     # PUP-3272

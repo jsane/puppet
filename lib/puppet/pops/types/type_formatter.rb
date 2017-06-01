@@ -325,8 +325,12 @@ class TypeFormatter
 
   def string_PuppetObject(t)
     @bld << t._pcore_type.name << '('
-    append_indented_string(t._pcore_init_hash, @indent || 0, @indent_width || 2, true)
-    @bld.chomp!
+    if @indent
+      append_indented_string(t._pcore_init_hash, @indent, @indent_width, true)
+      @bld.chomp!
+    else
+      append_string(t._pcore_init_hash)
+    end
     @bld << ')'
   end
 
@@ -399,7 +403,7 @@ class TypeFormatter
 
   # @api private
   def string_PAnnotatedMember(m)
-    hash = m.i12n_hash
+    hash = m._pcore_init_hash
     if hash.size == 1
       string(m.type)
     else
@@ -417,7 +421,7 @@ class TypeFormatter
   # @api private
   def string_PTypeSetType(t)
     append_array('TypeSet') do
-      append_hash(t.i12n_hash.each, proc { |k| @bld << symbolic_key(k) }) do |k,v|
+      append_hash(t._pcore_init_hash.each, proc { |k| @bld << symbolic_key(k) }) do |k,v|
         case k
         when KEY_TYPES
           old_ts = @type_set
@@ -445,7 +449,7 @@ class TypeFormatter
   # @api private
   def string_PObjectType(t)
     if @expanded
-      append_object_hash(t.i12n_hash(@type_set.nil? || !@type_set.defines_type?(t)))
+      append_object_hash(t._pcore_init_hash(@type_set.nil? || !@type_set.defines_type?(t)))
     else
       @bld << (@type_set ? @type_set.name_for(t, t.label) : t.label)
     end

@@ -669,7 +669,7 @@ describe Puppet::Resource do
     end
 
     it "doesn't include transient instance variables (#4506)" do
-      expect(@resource.to_yaml_properties).to_not include(:@rstype)
+      expect(@resource.to_data_hash.keys).to_not include('rstype')
     end
 
     it "produces an equivalent json object" do
@@ -677,6 +677,11 @@ describe Puppet::Resource do
 
       newresource = Puppet::Resource.convert_from('json', text)
       expect(newresource).to equal_resource_attributes_of(@resource)
+    end
+
+    it 'to_data_hash returns value that is instance of to Data' do
+      Puppet::Pops::Types::TypeAsserter.assert_instance_of('', Puppet::Pops::Types::TypeFactory.data, @resource.to_data_hash)
+      expect(Puppet::Pops::Types::TypeFactory.data.instance?(@resource.to_data_hash)).to be_truthy
     end
   end
 
@@ -727,7 +732,7 @@ describe Puppet::Resource do
         one::two { '/my/file':
           ensure => 'present',
           foo    => ['one', 'two'],
-          noop   => 'true',
+          noop   => true,
         }
       HEREDOC
     end
@@ -749,7 +754,7 @@ describe Puppet::Resource do
           /my/file:
             ensure: 'present'
             foo   : ['one', 'two']
-            noop  : 'true'
+            noop  : true
       HEREDOC
     end
   end

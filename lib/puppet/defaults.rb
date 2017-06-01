@@ -292,31 +292,6 @@ module Puppet
         <https://docs.puppet.com/puppet/latest/reference/environments.html>",
       :type    => :path,
     },
-    :always_cache_features => {
-      :type     => :boolean,
-      :default  => false,
-      :hook     => proc { |value|
-        Puppet.deprecation_warning "Setting 'always_cache_features' is
-deprecated and has been replaced by 'always_retry_plugins'."
-      },
-      :desc     => <<-'EOT'
-        This setting is deprecated and has been replaced by always_retry_plugins.
-
-        Affects how we cache attempts to load Puppet 'features'.  If false, then
-        calls to `Puppet.features.<feature>?` will always attempt to load the
-        feature (which can be an expensive operation) unless it has already been
-        loaded successfully.  This makes it possible for a single agent run to,
-        e.g., install a package that provides the underlying capabilities for
-        a feature, and then later load that feature during the same run (even if
-        the feature had been tested earlier and had not been available).
-
-        If this setting is set to true, then features will only be checked once,
-        and if they are not available, the negative result is cached and returned
-        for all subsequent attempts to load the feature.  This behavior is almost
-        always appropriate for the server, and can result in a significant performance
-        improvement for features that are checked frequently.
-      EOT
-    },
     :always_retry_plugins => {
         :type     => :boolean,
         :default  => true,
@@ -415,8 +390,7 @@ deprecated and has been replaced by 'always_retry_plugins'."
       :type       => :terminus,
       :default    => nil,
       :desc       => "How to store cached nodes.
-      Valid values are (none), 'json', 'msgpack', 'yaml' or write only yaml ('write_only_yaml').
-      The master application defaults to 'write_only_yaml', all others to none.",
+      Valid values are (none), 'json', 'msgpack', 'yaml' or write only yaml ('write_only_yaml').",
     },
     :data_binding_terminus => {
       :type    => :terminus,
@@ -679,13 +653,13 @@ deprecated and has been replaced by 'always_retry_plugins'."
         for more details.)
 
         * For best compatibility, you should limit the value of `certname` to
-          only use letters, numbers, periods, underscores, and dashes. (That is,
+          only use lowercase letters, numbers, periods, underscores, and dashes. (That is,
           it should match `/\A[a-z0-9._-]+\Z/`.)
         * The special value `ca` is reserved, and can't be used as the certname
           for a normal node.
 
         Defaults to the node's fully qualified domain name.",
-      :hook => proc { |value| raise(ArgumentError, "Certificate names must be lower case; see #1168") unless value == value.downcase }},
+      :hook => proc { |value| raise(ArgumentError, "Certificate names must be lower case") unless value == value.downcase }},
     :dns_alt_names => {
       :default => '',
       :desc    => <<EOT,
@@ -1337,7 +1311,7 @@ EOT
         makes to the master. WARNING: This setting is mutually exclusive with
         node_name_fact.  Changing this setting also requires changes to the default
         auth.conf configuration on the Puppet Master.  Please see
-        http://links.puppetlabs.com/node_name_value for more information."
+        http://links.puppet.com/node_name_value for more information."
     },
     :node_name_fact => {
       :default => "",
@@ -1345,7 +1319,7 @@ EOT
         makes to the master. WARNING: This setting is mutually exclusive with
         node_name_value.  Changing this setting also requires changes to the default
         auth.conf configuration on the Puppet Master.  Please see
-        http://links.puppetlabs.com/node_name_fact for more information.",
+        http://links.puppet.com/node_name_fact for more information.",
       :hook => proc do |value|
         if !value.empty? and Puppet[:node_name_value] != Puppet[:certname]
           raise "Cannot specify both the node_name_value and node_name_fact settings"
@@ -1946,7 +1920,7 @@ EOT
     :default => false,
     :type => :boolean,
     :desc => <<-'EOT'
-      Makes the parser raise errors when referencing unknown variables. (This does not affect
+      Causes an evaluation error when referencing unknown variables. (This does not affect
       referencing variables that are explicitly set to undef).
     EOT
     }

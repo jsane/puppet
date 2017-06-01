@@ -511,23 +511,24 @@ describe Puppet::Util::Log do
   describe "to_yaml" do
     it "should not include the @version attribute" do
       log = Puppet::Util::Log.new(:level => "notice", :message => :foo, :version => 100)
-      expect(log.to_yaml_properties).not_to include('@version')
+      expect(log.to_data_hash.keys).not_to include('version')
     end
 
-    it "should include attributes @level, @message, @source, @tags, and @time" do
+    it "should include attributes 'file', 'line', 'level', 'message', 'source', 'tags', and 'time'" do
       log = Puppet::Util::Log.new(:level => "notice", :message => :foo, :version => 100)
-      expect(log.to_yaml_properties).to match_array([:@level, :@message, :@source, :@tags, :@time])
+      expect(log.to_data_hash.keys).to match_array(%w(file line level message source tags time))
     end
 
-    it "should include attributes @file and @line if specified" do
+    it "should include attributes 'file' and 'line' if specified" do
       log = Puppet::Util::Log.new(:level => "notice", :message => :foo, :file => "foo", :line => 35)
-      expect(log.to_yaml_properties).to include(:@file)
-      expect(log.to_yaml_properties).to include(:@line)
+      expect(log.to_data_hash.keys).to include('file')
+      expect(log.to_data_hash.keys).to include('line')
     end
   end
 
+  let(:log) { Puppet::Util::Log.new(:level => 'notice', :message => 'hooray', :file => 'thefile', :line => 1729, :source => 'specs', :tags => ['a', 'b', 'c']) }
+
   it "should round trip through pson" do
-    log = Puppet::Util::Log.new(:level => 'notice', :message => 'hooray', :file => 'thefile', :line => 1729, :source => 'specs', :tags => ['a', 'b', 'c'])
     tripped = Puppet::Util::Log.from_data_hash(PSON.parse(log.to_pson))
 
     expect(tripped.file).to eq(log.file)
@@ -537,5 +538,9 @@ describe Puppet::Util::Log do
     expect(tripped.source).to eq(log.source)
     expect(tripped.tags).to eq(log.tags)
     expect(tripped.time).to eq(log.time)
+  end
+
+  it 'to_data_hash returns value that is instance of to Data' do
+    expect(Puppet::Pops::Types::TypeFactory.data.instance?(log.to_data_hash)).to be_truthy
   end
 end

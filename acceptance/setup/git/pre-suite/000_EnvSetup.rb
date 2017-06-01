@@ -11,8 +11,9 @@ PACKAGES = {
   :redhat => [
     'git',
     'ruby',
-    'rubygem-json',
-    'rubygem-io-console'
+    'rubygem-json',       # invalid on RHEL6
+    'rubygem-io-console', # required for Fedora25 to bundle install
+    'rubygem-rdoc'        # required for Fedora25 to install gems
   ],
   :debian => [
     ['git', 'git-core'],
@@ -106,9 +107,9 @@ hosts.each do |host|
     step "#{host} Selected architecture #{arch}"
 
     revision = if arch == 'x64'
-                 '2.1.x-x64'
+                 '2.4.x-x64'
                else
-                 '2.1.x-x86'
+                 '2.4.x-x86'
                end
 
     step "#{host} Install ruby from git using revision #{revision}"
