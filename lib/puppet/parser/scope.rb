@@ -516,7 +516,6 @@ class Puppet::Parser::Scope
   end
 
   UNDEFINED_VARIABLES_KIND = 'undefined_variables'.freeze
-  DEPRECATION_KIND = 'deprecation'.freeze
 
   # The exception raised when a throw is uncaught is different in different versions
   # of ruby. In >=2.2.0 it is UncaughtThrowError (which did not exist prior to this)
@@ -1044,7 +1043,7 @@ class Puppet::Parser::Scope
         assert_class_and_title(name.type, name.title)
         name.title.sub(/^([^:]{1,2})/, '::\1')
 
-      when Puppet::Pops::Types::PHostClassType
+      when Puppet::Pops::Types::PClassType
         #TRANSLATORS "Class" and "Type" are Puppet keywords and should not be translated
         raise ArgumentError, _("Cannot use an unspecific Class[] Type") unless name.class_name
         name.class_name.sub(/^([^:]{1,2})/, '::\1')

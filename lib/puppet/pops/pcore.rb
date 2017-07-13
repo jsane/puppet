@@ -84,7 +84,7 @@ module Pcore
   end
 
   def self.add_type(type, loader, name_authority = RUNTIME_NAME_AUTHORITY)
-    loader.set_entry(Loader::TypedName.new(:type, type.name.downcase, name_authority), type)
+    loader.set_entry(Loader::TypedName.new(:type, type.name, name_authority), type)
     type
   end
 
@@ -96,8 +96,7 @@ module Pcore
     aliases.each do |name, type_string|
       add_type(Types::PTypeAliasType.new(name, Types::TypeFactory.type_reference(type_string), nil), loader, name_authority)
     end
-    parser = Types::TypeParser.singleton
-    aliases.each_key.map { |name| loader.load(:type, name.downcase).resolve(parser, loader) }
+    aliases.each_key.map { |name| loader.load(:type, name).resolve(loader) }
   end
 end
 end

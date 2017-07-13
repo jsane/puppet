@@ -127,13 +127,13 @@ describe Puppet::Network::HTTP::API::IndirectedRoutes do
     end
 
     it "should not URI unescape the indirection key" do
-      escaped = URI.escape("foo bar")
+      escaped = Puppet::Util.uri_encode("foo bar")
       indirection, _, key, _ = handler.uri2indirection("GET", "#{master_url_prefix}/node/#{escaped}", params)
       expect(key).to eq(escaped)
     end
 
     it "should not unescape the URI passed through in a call to check_authorization" do
-      key_escaped = URI.escape("foo bar")
+      key_escaped = Puppet::Util.uri_encode("foo bar")
       uri_escaped = "#{master_url_prefix}/node/#{key_escaped}"
       handler.expects(:check_authorization).with(anything, uri_escaped, anything)
       indirection, _, _, _ = handler.uri2indirection("GET", uri_escaped, params)
@@ -199,7 +199,7 @@ describe Puppet::Network::HTTP::API::IndirectedRoutes do
     end
 
     it "should use the escaped key as the remainder of the URI" do
-      escaped = URI.escape("with spaces")
+      escaped = Puppet::Util.uri_encode("with spaces")
       expect(handler.class.request_to_uri_and_body(request).first.split("/")[4].sub(/\?.+/, '')).to eq(escaped)
     end
 
@@ -263,6 +263,18 @@ describe Puppet::Network::HTTP::API::IndirectedRoutes do
       expect(response.type).to eq(Puppet::Network::FormatHandler.format(:json))
     end
 
+    it "falls back to the next supported format" do
+      data = Puppet::IndirectorTesting.new("my data")
+      indirection.save(data, "my data")
+      request = a_request_that_finds(data, :accept_header => "application/json, text/pson")
+      data.stubs(:to_json).raises(Puppet::Network::FormatHandler::FormatError, 'Could not render to Puppet::Network::Format[json]: source sequence is illegal/malformed utf-8')
+
+      handler.call(request, response)
+
+      expect(response.body).to eq(data.render(:pson))
+      expect(response.type).to eq(Puppet::Network::FormatHandler.format(:pson))
+    end
+
     it "should pass the result through without rendering it if the result is a string" do
       data = Puppet::IndirectorTesting.new("my data")
       data_string = "my data string"
@@ -295,6 +307,30 @@ describe Puppet::Network::HTTP::API::IndirectedRoutes do
 
       expect(response.type).to eq(Puppet::Network::FormatHandler.format(:json))
       expect(response.body).to eq(Puppet::IndirectorTesting.render_multiple(:json, [data]))
+    end
+
+    it "falls back to the next supported format" do
+      data = Puppet::IndirectorTesting.new("my data")
+      indirection.save(data, "my data")
+      request = a_request_that_searches(Puppet::IndirectorTesting.new("my"), :accept_header => "application/json, text/pson")
+      data.stubs(:to_json).raises(Puppet::Network::FormatHandler::FormatError, 'Could not render to Puppet::Network::Format[json]: source sequence is illegal/malformed utf-8')
+
+      handler.call(request, response)
+
+      expect(response.type).to eq(Puppet::Network::FormatHandler.format(:pson))
+      expect(response.body).to eq(Puppet::IndirectorTesting.render_multiple(:pson, [data]))
+    end
+
+    it "raises 406 not acceptable if no formats are accceptable" do
+      data = Puppet::IndirectorTesting.new("my data")
+      indirection.save(data, "my data")
+      request = a_request_that_searches(Puppet::IndirectorTesting.new("my"), :accept_header => "application/json, text/pson")
+      data.stubs(:to_json).raises(Puppet::Network::FormatHandler::FormatError, 'Could not render to Puppet::Network::Format[json]: source sequence is illegal/malformed utf-8')
+      data.stubs(:to_pson).raises(Puppet::Network::FormatHandler::FormatError, 'Could not render to Puppet::Network::Format[pson]: source sequence is illegal/malformed utf-8')
+
+      expect {
+        handler.call(request, response)
+      }.to raise_error(Puppet::Network::HTTP::Error::HTTPNotAcceptableError, /No supported formats are acceptable/)
     end
 
     it "should return [] when searching returns an empty array" do

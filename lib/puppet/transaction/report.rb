@@ -99,12 +99,6 @@ class Puppet::Transaction::Report
   #
   attr_reader :time
 
-  # The 'kind' of report is the name of operation that triggered the report to be produced.
-  # Typically "apply".
-  # @return [String] the kind of operation that triggered the generation of the report.
-  #
-  attr_reader :kind
-
   # The status of the client run is an enumeration: 'failed', 'changed' or 'unchanged'
   # @return [String] the status of the run - one of the values 'failed', 'changed', or 'unchanged'
   #
@@ -176,7 +170,9 @@ class Puppet::Transaction::Report
 
   # @api private
   def compute_status(resource_metrics, change_metric)
-    if resources_failed_to_generate || (resource_metrics["failed"] || 0) > 0
+    if resources_failed_to_generate ||
+       (resource_metrics["failed"] || 0) > 0 ||
+       (resource_metrics["failed_to_restart"] || 0) > 0
       'failed'
     elsif change_metric > 0
       'changed'
@@ -210,14 +206,13 @@ class Puppet::Transaction::Report
   end
 
   # @api private
-  def initialize(kind, configuration_version=nil, environment=nil, transaction_uuid=nil, job_id=nil)
+  def initialize(configuration_version=nil, environment=nil, transaction_uuid=nil, job_id=nil)
     @metrics = {}
     @logs = []
     @resource_statuses = {}
     @external_times ||= {}
     @host = Puppet[:node_name_value]
     @time = Time.now
-    @kind = kind
     @report_format = 7
     @puppet_version = Puppet.version
     @configuration_version = configuration_version
@@ -271,7 +266,6 @@ class Puppet::Transaction::Report
     if @time.is_a? String
       @time = Time.parse(@time)
     end
-    @kind = data['kind']
 
     @metrics = {}
     data['metrics'].each do |name, hash|
@@ -303,7 +297,6 @@ class Puppet::Transaction::Report
       'transaction_uuid' => @transaction_uuid,
       'report_format' => @report_format,
       'puppet_version' => @puppet_version,
-      'kind' => @kind,
       'status' => @status,
       'noop' => @noop,
       'noop_pending' => @noop_pending,
@@ -396,10 +389,6 @@ class Puppet::Transaction::Report
     status |= 4 if @metrics["resources"]["failed"] > 0
     status |= 4 if @metrics["resources"]["failed_to_restart"] > 0
     status
-  end
-
-  def self.default_format
-    :pson
   end
 
   private

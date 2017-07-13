@@ -22,7 +22,7 @@ module Serialization
       new(options).convert(value)
     end
 
-    # Create a new instance of the processer
+    # Create a new instance of the processor
     #
     # @param options {Symbol => Object} options hash
     # @option options [Boolean] :rich_data `true` if rich data is enabled
@@ -52,6 +52,8 @@ module Serialization
     #
     # @param value [Object] the value to convert
     # @return [Data] the processed result. An object assignable to `Data`.
+    #
+    # @api public
     def convert(value)
       @path = []
       @values = {}
@@ -176,9 +178,15 @@ module Serialization
       @rich_data ? value_to_data_hash(value) : unknown_to_string_with_warning(value)
     end
 
+    def unknown_key_to_string_with_warning(value)
+      str = value.to_s
+      serialization_issue(Issues::SERIALIZATION_UNKNOWN_KEY_CONVERTED_TO_STRING, :path => path_to_s, :klass => value.class, :value => str)
+      str
+    end
+
     def unknown_to_string_with_warning(value)
       str = value.to_s
-      serialization_issue(Issues::SERIALIZATION_UNKNOWN_CONVERTED_TO_STRING, :path => path_to_s, :klass => value.class.name, :value => str)
+      serialization_issue(Issues::SERIALIZATION_UNKNOWN_CONVERTED_TO_STRING, :path => path_to_s, :klass => value.class, :value => str)
       str
     end
 
@@ -190,10 +198,10 @@ module Serialization
         hash.each_pair do |key, value|
           if key.is_a?(Symbol) && @symbol_as_string
             key = key.to_s
-          elsif !key.is_a(String)
-            key = unknown_to_string_with_warning(key)
+          elsif !key.is_a?(String)
+            key = unknown_key_to_string_with_warning(key)
           end
-          with(key) { result[key] = to_data(elem) }
+          with(key) { result[key] = to_data(value) }
         end
         result
       end

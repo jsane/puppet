@@ -503,6 +503,23 @@ describe Puppet::Parser::Compiler do
           }.to raise_error(/Could not find resource 'Notify\[tooth_fairy\]' in parameter '#{meta_param}'/)
         end
       end
+
+      it 'is not reported for virtual resources' do
+        expect { 
+          compile_to_catalog(<<-PP)
+            @notify{ x : require => Notify[tooth_fairy] }
+          PP
+        }.to_not raise_error
+      end
+
+      it 'is reported for a realized virtual resources' do
+        expect { 
+          compile_to_catalog(<<-PP)
+            @notify{ x : require => Notify[tooth_fairy] }
+            realize(Notify['x'])
+          PP
+        }.to raise_error(/Could not find resource 'Notify\[tooth_fairy\]' in parameter 'require'/)
+      end
     end
 
     describe "relationships can be formed" do
@@ -1134,5 +1151,30 @@ describe Puppet::Parser::Compiler do
         PP
       }.to raise_error(/Could not find resource 'Notify\[alias_2\]'/)
     end
+  end
+
+  describe 'the compiler when using collection and override' do
+    include PuppetSpec::Compiler
+
+    it 'allows an override when there is a default present' do
+      catalog = compile_to_catalog(<<-MANIFEST)
+        Package { require => Class['bar'] }
+        class bar { }
+        class foo {
+          package { 'python': }
+          package { 'pip': require => Package['python'] }
+
+          Package <| title == 'pip' |> {
+            name     => "python-pip",
+            category => undef,
+          }
+        }
+        include foo
+        include bar
+      MANIFEST
+      package = catalog.resource('Package', 'pip')
+      expect(catalog.resource('Package', 'pip')[:require].to_s).to eql('Package[python]')
+    end
+
   end
 end

@@ -87,7 +87,7 @@ module Puppet::Resource::CapabilityFinder
         Puppet::Util::Puppetdb.query_puppetdb(["from", "resources", query])
       # For PuppetDB < 4, use the old internal method action()
       else
-        url = "/pdb/query/v4/resource?query=#{CGI.escape(query.to_json)}"
+        url = "/pdb/query/v4/resource?query=#{Puppet::Util.uri_query_encode(query.to_json)}"
         response = Puppet::Util::Puppetdb::Http.action(url) do |conn, uri|
           conn.get(uri, { 'Accept' => 'application/json'})
         end
@@ -95,7 +95,7 @@ module Puppet::Resource::CapabilityFinder
       end
 
       # The format of the response body is documented at
-      #   http://docs.puppetlabs.com/puppetdb/3.0/api/query/v4/resources.html#response-format
+      #   https://docs.puppetlabs.com/puppetdb/3.0/api/query/v4/resources.html#response-format
       unless result.is_a?(Array)
         raise Puppet::DevError,
         "Unexpected response from PuppetDB when looking up #{cap}: " \

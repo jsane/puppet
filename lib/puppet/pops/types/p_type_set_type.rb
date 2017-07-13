@@ -48,13 +48,13 @@ class PTypeSetType < PMetaType
     TypeFactory.optional(KEY_NAME_AUTHORITY) => Pcore::TYPE_URI,
     TypeFactory.optional(KEY_NAME) => Pcore::TYPE_QUALIFIED_REFERENCE,
     TypeFactory.optional(KEY_VERSION) => TYPE_STRING_OR_VERSION,
-    TypeFactory.optional(KEY_TYPES) => TypeFactory.hash_kv(Pcore::TYPE_SIMPLE_TYPE_NAME, PType::DEFAULT, PCollectionType::NOT_EMPTY_SIZE),
+    TypeFactory.optional(KEY_TYPES) => TypeFactory.hash_kv(Pcore::TYPE_SIMPLE_TYPE_NAME, PTypeType::DEFAULT, PCollectionType::NOT_EMPTY_SIZE),
     TypeFactory.optional(KEY_REFERENCES) => TypeFactory.hash_kv(Pcore::TYPE_SIMPLE_TYPE_NAME, TYPE_TYPE_REFERENCE_I12N, PCollectionType::NOT_EMPTY_SIZE),
     TypeFactory.optional(KEY_ANNOTATIONS) => TYPE_ANNOTATIONS,
   })
 
   def self.register_ptype(loader, ir)
-    create_ptype(loader, ir, 'AnyType', '_pcore_init_hash' => TYPE_TYPESET_I12N.resolve(TypeParser.singleton, loader))
+    create_ptype(loader, ir, 'AnyType', '_pcore_init_hash' => TYPE_TYPESET_I12N.resolve(loader))
   end
 
   attr_reader :pcore_uri
@@ -254,17 +254,18 @@ class PTypeSetType < PMetaType
   end
 
   # @api private
-  def resolve(type_parser, loader)
+  def resolve(loader)
     super
-    @references.each_value { |ref| ref.resolve(type_parser, loader) }
+    @references.each_value { |ref| ref.resolve(loader) }
     tsa_loader = TypeSetLoader.new(self, loader)
-    @types.values.each { |type| type.resolve(type_parser, tsa_loader) }
+    @types.values.each { |type| type.resolve(tsa_loader) }
     self
   end
 
   # @api private
-  def resolve_literal_hash(type_parser, loader, init_hash_expression)
+  def resolve_literal_hash(loader, init_hash_expression)
     result = {}
+    type_parser = TypeParser.singleton
     init_hash_expression.entries.each do |entry|
       key = type_parser.interpret_any(entry.key, loader)
       if (key == KEY_TYPES || key == KEY_REFERENCES) && entry.value.is_a?(Model::LiteralHash)
@@ -287,7 +288,7 @@ class PTypeSetType < PMetaType
     if types.is_a?(Hash)
       types.each do |type_name, value|
         full_name = "#{@name}::#{type_name}".freeze
-        typed_name = Loader::TypedName.new(:type, full_name.downcase, name_auth)
+        typed_name = Loader::TypedName.new(:type, full_name, name_auth)
         type = Loader::TypeDefinitionInstantiator.create_type(full_name, value, name_auth)
         loader.set_entry(typed_name, type, value.locator.to_uri(value))
         types[type_name] = type
@@ -297,10 +298,10 @@ class PTypeSetType < PMetaType
   end
 
   # @api private
-  def resolve_hash(type_parser, loader, init_hash)
+  def resolve_hash(loader, init_hash)
     result = Hash[init_hash.map do |key, value|
-      key = resolve_type_refs(type_parser, loader, key)
-      value = resolve_type_refs(type_parser, loader, value) unless key == KEY_TYPES && value.is_a?(Hash)
+      key = resolve_type_refs(loader, key)
+      value = resolve_type_refs(loader, value) unless key == KEY_TYPES && value.is_a?(Hash)
       [key, value]
     end]
     name_auth = resolve_name_authority(result, loader)
@@ -308,7 +309,7 @@ class PTypeSetType < PMetaType
     if types.is_a?(Hash)
       types.each do |type_name, value|
         full_name = "#{@name}::#{type_name}".freeze
-        typed_name = Loader::TypedName.new(:type, full_name.downcase, name_auth)
+        typed_name = Loader::TypedName.new(:type, full_name, name_auth)
         meta_name = value.is_a?(Hash) ? 'Object' : 'TypeAlias'
         type = Loader::TypeDefinitionInstantiator.create_named_type(full_name, meta_name, value, name_auth)
         loader.set_entry(typed_name, type)

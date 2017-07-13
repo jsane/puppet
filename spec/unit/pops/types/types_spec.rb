@@ -570,19 +570,19 @@ describe 'Puppet Type System' do
   context 'instantiation via new_function is supported by' do
     let(:loader) { Loader::BaseLoader.new(nil, "types_unit_test_loader") }
     it 'Integer' do
-      func_class = tf.integer.new_function(loader)
+      func_class = tf.integer.new_function
       expect(func_class).to be_a(Class)
       expect(func_class.superclass).to be(Puppet::Functions::Function)
     end
 
     it 'Optional[Integer]' do
-      func_class = tf.optional(tf.integer).new_function(loader)
+      func_class = tf.optional(tf.integer).new_function
       expect(func_class).to be_a(Class)
       expect(func_class.superclass).to be(Puppet::Functions::Function)
     end
 
     it 'Regexp' do
-      func_class = tf.regexp.new_function(loader)
+      func_class = tf.regexp.new_function
       expect(func_class).to be_a(Class)
       expect(func_class.superclass).to be(Puppet::Functions::Function)
     end
@@ -593,7 +593,7 @@ describe 'Puppet Type System' do
 
       it 'Any, Scalar, Collection' do
         [tf.any, tf.scalar, tf.collection ].each do |t|
-        expect { t.new_function(loader)
+        expect { t.new_function
         }.to raise_error(ArgumentError, /Creation of new instance of type '#{t.to_s}' is not supported/)
       end
     end
@@ -643,6 +643,18 @@ describe 'Puppet Type System' do
     it 'is supported by Regexp' do
       rx_type = tf.regexp.class.create('[a-z]+')
       expect(rx_type).to eq(tf.regexp(/[a-z]+/))
+    end
+  end
+
+  context 'backward compatibility' do
+    it 'PTypeType can be accessed from PType' do
+      # should appoint the exact same instance
+      expect(PType).to equal(PTypeType)
+    end
+
+    it 'PClassType can be accessed from PHostClassType' do
+      # should appoint the exact same instance
+      expect(PHostClassType).to equal(PClassType)
     end
   end
 end

@@ -27,7 +27,7 @@ class CollectorTransformer
       overrides = {
         :parameters => o.operations.map{ |x| @@evaluator.evaluate(x, scope)}.flatten,
         :file       => o.file,
-        :line       => [o.line, o.pos],
+        :line       => o.line,
         :source     => scope.source,
         :scope      => scope
       }
@@ -37,10 +37,10 @@ class CollectorTransformer
 
     case o.query
     when Model::VirtualQuery
-      newcoll = Collectors::CatalogCollector.new(scope, resource_type.name, code, overrides)
+      newcoll = Collectors::CatalogCollector.new(scope, resource_type, code, overrides)
     when Model::ExportedQuery
       match = match_unless_nop(o.query, scope)
-      newcoll = Collectors::ExportedCollector.new(scope, resource_type.name, match, code, overrides)
+      newcoll = Collectors::ExportedCollector.new(scope, resource_type, match, code, overrides)
     end
 
     scope.compiler.add_collection(newcoll)

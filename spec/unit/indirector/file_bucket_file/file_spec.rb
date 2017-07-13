@@ -41,16 +41,16 @@ describe Puppet::FileBucketFile::File, :uses_checksums => true do
       end
 
       it "fails if the contents collide with existing contents" do
-        # This is the shortest known MD5 collision. See https://eprint.iacr.org/2010/643.pdf
+        # This is the shortest known MD5 collision (little endian). See https://eprint.iacr.org/2010/643.pdf
         first_contents = [0x6165300e,0x87a79a55,0xf7c60bd0,0x34febd0b,
                           0x6503cf04,0x854f709e,0xfb0fc034,0x874c9c65,
                           0x2f94cc40,0x15a12deb,0x5c15f4a3,0x490786bb,
-                          0x6d658673,0xa4341f7d,0x8fd75920,0xefd18d5a].pack("I" * 16)
+                          0x6d658673,0xa4341f7d,0x8fd75920,0xefd18d5a].pack("V" * 16)
 
         collision_contents = [0x6165300e,0x87a79a55,0xf7c60bd0,0x34febd0b,
                               0x6503cf04,0x854f749e,0xfb0fc034,0x874c9c65,
                               0x2f94cc40,0x15a12deb,0xdc15f4a3,0x490786bb,
-                              0x6d658673,0xa4341f7d,0x8fd75920,0xefd18d5a].pack("I" * 16)
+                              0x6d658673,0xa4341f7d,0x8fd75920,0xefd18d5a].pack("V" * 16)
 
         checksum_value = save_bucket_file(first_contents, "/foo/bar")
 
@@ -166,7 +166,7 @@ describe Puppet::FileBucketFile::File, :uses_checksums => true do
 
             # The list is sort order from date and file name, so first and third checksums come before the second
             date_pattern = '\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}'
-            expect(find_result.to_s).to match(Regexp.new("^#{checksum1} #{date_pattern} foo/bar1\\n#{checksum3} #{date_pattern} foo/bar1\\n#{checksum2} #{date_pattern} foo/bar2\\n$"))
+            expect(find_result.to_s).to match(Regexp.new("^(#{checksum1}|#{checksum3}) #{date_pattern} foo/bar1\\n(#{checksum3}|#{checksum1}) #{date_pattern} foo/bar1\\n#{checksum2} #{date_pattern} foo/bar2\\n$"))
           end
 
           it "should fail in an informative way when provided dates are not in the right format" do

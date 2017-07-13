@@ -3,7 +3,7 @@ Puppet::Parser::Functions::newfunction(
   :type => :rvalue,
   :arity => -3,
   :doc => <<-DOC
-Runs a [lambda](http://docs.puppetlabs.com/puppet/latest/reference/lang_lambdas.html)
+Runs a [lambda](https://docs.puppetlabs.com/puppet/latest/reference/lang_lambdas.html)
 repeatedly using each value in a data structure, then returns the values unchanged.
 
 This function takes two mandatory arguments, in this order:
@@ -100,5 +100,5 @@ documentation.
 - Since 4.0.0
 DOC
 ) do |args|
-  Error.is4x('each')
+  Puppet::Parser::Functions::Error.is4x('each')
 end

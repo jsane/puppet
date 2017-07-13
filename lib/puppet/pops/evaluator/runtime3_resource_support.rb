@@ -60,19 +60,17 @@ module Runtime3ResourceSupport
         # Classes are evaluated immediately
         scope.compiler.evaluate_classes([resource_title], scope, false) if resolved_type == CLASS_STRING
 
-        # Turn the resource into a PType (a reference to a resource type)
+        # Turn the resource into a PTypeType (a reference to a resource type)
         # weed out nil's
         resource_to_ptype(resource)
     end
   end
 
   def self.find_resource_type(scope, type_name)
-    type_name = type_name.to_s.downcase
     find_builtin_resource_type(scope, type_name) || find_defined_resource_type(scope, type_name)
   end
 
   def self.find_resource_type_or_class(scope, name)
-    type_name = type_name.to_s.downcase
     find_builtin_resource_type(scope, name) || find_defined_resource_type(scope, name) || find_hostclass(scope, name)
   end
 

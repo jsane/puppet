@@ -155,6 +155,31 @@ module Serialization
       expect(val2.unwrap).to be_a(Time::Timestamp)
       expect(val2.unwrap).to eql(sval)
     end
+
+    it 'Hash with Symbol keys' do
+      val = { :one => 'one', :two => 'two' }
+      write(val)
+      val2 = read
+      expect(val2).to be_a(Hash)
+      expect(val2).to eql(val)
+    end
+
+    it 'Hash with Integer keys' do
+      val = { 1 => 'one', 2 => 'two' }
+      write(val)
+      val2 = read
+      expect(val2).to be_a(Hash)
+      expect(val2).to eql(val)
+    end
+
+    it 'A Hash that references itself' do
+      val = {}
+      val['myself'] = val
+      write(val)
+      val2 = read
+      expect(val2).to be_a(Hash)
+      expect(val2['myself']).to equal(val2)
+    end
   end
 
   context 'can write and read' do
@@ -296,7 +321,7 @@ module Serialization
 
           def self.register_ptype(loader, ir)
             @type = Pcore.create_object_type(loader, ir, DerivedArray, 'DerivedArray', nil, 'values' => Types::PArrayType::DEFAULT)
-              .resolve(Types::TypeParser.singleton, loader)
+              .resolve(loader)
           end
 
           def initialize(values)
@@ -317,7 +342,7 @@ module Serialization
 
           def self.register_ptype(loader, ir)
             @type = Pcore.create_object_type(loader, ir, DerivedHash, 'DerivedHash', nil, '_pcore_init_hash' => Types::PHashType::DEFAULT)
-              .resolve(Types::TypeParser.singleton, loader)
+              .resolve(loader)
           end
 
           def initialize(_pcore_init_hash)
@@ -383,11 +408,21 @@ module Serialization
       })
     end
 
-    it 'fails when deserializer is unaware of the referenced type' do
-      write(type.create(32))
+    context 'fails when deserializer is unaware of the referenced type' do
+      it 'fails by default' do
+        write(type.create(32))
 
-      # Should fail since no loader knows about 'MyType'
-      expect{ read }.to raise_error(Puppet::Error, 'No implementation mapping found for Puppet Type MyType')
+        # Should fail since no loader knows about 'MyType'
+        expect{ read }.to raise_error(Puppet::Error, 'No implementation mapping found for Puppet Type MyType')
+      end
+
+      context "succeds but produces an rich_type hash when deserializer has 'allow_unresolved' set to true" do
+        let(:from_converter) { FromDataConverter.new(:allow_unresolved => true) }
+        it do
+          write(type.create(32))
+          expect(read).to eql({'__pcore_type__'=>'MyType', 'x'=>32})
+        end
+      end
     end
 
     it 'succeeds when deserializer is aware of the referenced type' do
@@ -395,6 +430,63 @@ module Serialization
       write(obj)
       loaders.find_loader(nil).expects(:load).with(:type, 'mytype').returns(type)
       expect(read).to eql(obj)
+    end
+  end
+
+  context 'with rich_data set to false' do
+    let(:to_converter) { ToDataConverter.new(:message_prefix => 'Test Hash', :rich_data => false) }
+    let(:logs) { [] }
+    let(:warnings) { logs.select { |log| log.level == :warning }.map { |log| log.message } }
+
+    it 'A Hash with Symbol keys is converted to hash with String keys with warning' do
+      val = { :one => 'one', :two => 'two' }
+      Puppet::Util::Log.with_destination(Puppet::Test::LogCollector.new(logs)) do
+        write(val)
+        val2 = read
+        expect(val2).to be_a(Hash)
+        expect(val2).to eql({ 'one' => 'one', 'two' => 'two' })
+      end
+      expect(warnings).to eql([
+        "Test Hash contains a hash with a Symbol key. It will be converted to the String 'one'",
+        "Test Hash contains a hash with a Symbol key. It will be converted to the String 'two'"])
+    end
+
+    it 'A Hash with Version keys is converted to hash with String keys with warning' do
+      val = { SemanticPuppet::Version.parse('1.0.0') => 'one', SemanticPuppet::Version.parse('2.0.0') => 'two' }
+      Puppet::Util::Log.with_destination(Puppet::Test::LogCollector.new(logs)) do
+        write(val)
+        val2 = read
+        expect(val2).to be_a(Hash)
+        expect(val2).to eql({ '1.0.0' => 'one', '2.0.0' => 'two' })
+      end
+      expect(warnings).to eql([
+        "Test Hash contains a hash with a SemanticPuppet::Version key. It will be converted to the String '1.0.0'",
+        "Test Hash contains a hash with a SemanticPuppet::Version key. It will be converted to the String '2.0.0'"])
+    end
+
+    context 'and symbol_as_string is set to true' do
+      let(:to_converter) { ToDataConverter.new(:symbol_as_string => true) }
+
+      it 'A Hash with Symbol keys is silently converted to hash with String keys' do
+        val = { :one => 'one', :two => 'two' }
+        Puppet::Util::Log.with_destination(Puppet::Test::LogCollector.new(logs)) do
+          write(val)
+          val2 = read
+          expect(val2).to be_a(Hash)
+          expect(val2).to eql({ 'one' => 'one', 'two' => 'two' })
+        end
+        expect(warnings).to be_empty
+      end
+    end
+  end
+
+  context 'with local_reference set to false' do
+    let(:to_converter) { ToDataConverter.new(:local_reference => false) }
+
+    it 'A self referencing value will trigger an endless recursion error' do
+      val = {}
+      val['myself'] = val
+      expect { write(val) }.to raise_error(/Endless recursion detected when attempting to serialize value of class Hash/)
     end
   end
 end

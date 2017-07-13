@@ -104,14 +104,13 @@ class Loaders
   def self.register_implementations_with_loader(obj_classes, name_authority, loader)
     types = obj_classes.map do |obj_class|
       type = obj_class._pcore_type
-      typed_name = Loader::TypedName.new(:type, type.name.downcase, name_authority)
+      typed_name = Loader::TypedName.new(:type, type.name, name_authority)
       entry = loader.loaded_entry(typed_name)
       loader.set_entry(typed_name, type) if entry.nil? || entry.value.nil?
       type
     end
     # Resolve lazy so that all types can cross reference each other
-    parser = Types::TypeParser.singleton
-    types.each { |type| type.resolve(parser, loader) }
+    types.each { |type| type.resolve(loader) }
   end
 
   # Register the given type with the Runtime3TypeLoader. The registration will not happen unless
@@ -129,7 +128,7 @@ class Loaders
 
     name = name.to_s
     caps_name = Types::TypeFormatter.singleton.capitalize_segments(name)
-    typed_name = Loader::TypedName.new(:type, name.downcase)
+    typed_name = Loader::TypedName.new(:type, name)
     rt3_loader.set_entry(typed_name, Types::PResourceType.new(caps_name), origin)
     nil
   end

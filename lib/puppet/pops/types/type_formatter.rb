@@ -169,8 +169,13 @@ class TypeFormatter
   end
 
   # @api private
-  def string_PType(t)
+  def string_PTypeType(t)
     append_array('Type', t.type.nil?) { append_string(t.type) }
+  end
+
+  # @api private
+  def string_PInitType(t)
+    append_array('Init', t.type.nil?)  { append_strings([t.type, *t.init_args]) }
   end
 
   # @api private
@@ -341,7 +346,7 @@ class TypeFormatter
 
   # @api private
   def string_PRuntimeType(t)
-    append_array('Runtime') { append_strings([t.runtime, t.name_or_pattern]) }
+    append_array('Runtime', t.runtime.nil? && t.name_or_pattern.nil?) { append_strings([t.runtime, t.name_or_pattern]) }
   end
 
   # @api private
@@ -376,7 +381,7 @@ class TypeFormatter
   end
 
   # @api private
-  def string_PHostClassType(t)
+  def string_PClassType(t)
     append_array('Class', t.class_name.nil?) { append_elements([t.class_name]) }
   end
 
@@ -457,7 +462,7 @@ class TypeFormatter
 
   # @api private
   def string_PSensitiveType(t)
-    append_array('Sensitive') { append_string(t.type) }
+    append_array('Sensitive', PAnyType::DEFAULT == t.type) { append_string(t.type) }
   end
 
   # @api private

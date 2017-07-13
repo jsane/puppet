@@ -996,7 +996,7 @@ EOT
         the request.
 
         For info on autosign configuration files, see
-        [the guide to Puppet's config files](http://docs.puppetlabs.com/puppet/latest/reference/config_about_settings.html).",
+        [the guide to Puppet's config files](https://docs.puppetlabs.com/puppet/latest/reference/config_about_settings.html).",
     },
     :allow_duplicate_certs => {
       :default    => false,
@@ -1651,28 +1651,6 @@ EOT
       dependencies set with the before/require/notify/subscribe metaparameters
       and the `->`/`~>` chaining arrows; this setting only affects the relative
       ordering of _unrelated_ resources."
-    }
-  )
-
-  define_settings(:inspect,
-    :archive_files => {
-        :type     => :boolean,
-        :default  => false,
-        :desc     => "During an inspect run, whether to archive files whose contents are audited to a file bucket. Note that the `inspect` command is deprecated.",
-        :hook => proc { |value|
-          if Puppet[:strict] != :off
-            Puppet.deprecation_warning(_("Setting 'archive_files' is deprecated. It will be removed in a future release along with the `inspect` command."))
-          end
-        }
-    },
-    :archive_file_server => {
-        :default  => "$server",
-        :desc     => "During an inspect run, the file bucket server to archive files to if archive_files is set. Note that the `inspect` command is deprecated.",
-        :hook => proc { |value|
-          if Puppet[:strict] != :off
-            Puppet.deprecation_warning(_("Setting 'archive_file_server' is deprecated. It will be removed in a future release along with the `inspect` command."))
-          end
-        }
     }
   )
 
