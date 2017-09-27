@@ -6,7 +6,7 @@ module Puppet
     include Puppet::Util::Checksums
     include Puppet::DataSync
 
-    desc "The checksum of the source contents. Only md5 and sha256 are supported when
+    desc "The checksum of the source contents. Only md5,sha256,sha384 and sha512 are supported when
       specifying this parameter. If this parameter is set, source_permissions will be
       assumed to be false, and ownership and permissions will not be read from source."
 
