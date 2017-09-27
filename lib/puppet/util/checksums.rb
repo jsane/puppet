@@ -10,7 +10,7 @@ module Puppet::Util::Checksums
   # It's not a good idea to use some of these in some contexts: for example, I
   # wouldn't try bucketing a file using the :none checksum type.
   def known_checksum_types
-    [:sha256, :sha256lite, :md5, :md5lite, :sha1, :sha1lite,
+    [:sha256, :sha256lite, :md5, :md5lite, :sha384, :sha384lite, :sha1, :sha1lite,
       :mtime, :ctime, :none]
   end
 
@@ -81,6 +81,53 @@ module Puppet::Util::Checksums
 
   def sha256lite_hex_length
     sha256_hex_length
+  end
+
+  # Calculate a checksum using Digest::SHA384.
+  def sha384(content)
+    require 'digest/sha2'
+    Digest::SHA384.hexdigest(content)
+  end
+
+  def sha384?(string)
+    string =~ /^\h{48}$/
+  end
+
+  def sha384_file(filename, lite = false)
+    require 'digest/sha2'
+
+    digest = Digest::SHA384.new
+    checksum_file(digest, filename,  lite)
+  end
+
+  def sha384_stream(lite = false, &block)
+    require 'digest/sha2'
+    digest = Digest::SHA384.new
+    checksum_stream(digest, block, lite)
+  end
+
+  def sha384_hex_length
+    48
+  end
+
+  def sha384lite(content)
+    sha384(content[0..511])
+  end
+
+  def sha384lite?(string)
+    sha384?(string)
+  end
+
+  def sha384lite_file(filename)
+    sha384_file(filename, true)
+  end
+
+  def sha384lite_stream(&block)
+    sha384_stream(true, &block)
+  end
+
+  def sha384lite_hex_length
+    sha384_hex_length
   end
 
   # Calculate a checksum using Digest::MD5.
