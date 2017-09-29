@@ -20,6 +20,16 @@ step "Install puppet-agent..." do
   }
   agents.each do |agent|
     next if agent == master # Avoid SERVER-528
+
+    if agent[:platform].match(/(?:el-7|redhat-7)/)
+      step "Upgrade openssl package..." do
+      end
+      on(agent, "yum -y install openssl-1.0.1e-51.el7_2.4.x86_64")
+    else
+      step "Skipping upgrade of openssl package... (not redhat platform)" do
+      end
+    end
+
     install_puppet_agent_dev_repo_on(agent, opts)
   end
 end
@@ -88,6 +98,17 @@ step "Install puppetserver..." do
       server_download_url = "http://builds.delivery.puppetlabs.net"
     end
     install_puppetlabs_dev_repo(master, 'puppetserver', server_version, nil, :dev_builds_url => server_download_url)
+
+    # Move the openssl libs package to a newer version on redhat platforms
+    if master[:platform].match(/(?:el-7|redhat-7)/)
+      step "Upgrade openssl package..." do
+      end
+      on(master, "yum -y install openssl-1.0.1e-51.el7_2.4.x86_64")
+    else
+      step "Skipping upgrade of openssl package... (not redhat platform)" do
+      end
+    end
+
     install_puppetlabs_dev_repo(master, 'puppet-agent', ENV['SHA'])
     master.install_package('puppetserver')
   end
