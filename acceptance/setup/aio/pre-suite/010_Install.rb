@@ -22,9 +22,14 @@ step "Install puppet-agent..." do
     next if agent == master # Avoid SERVER-528
 
     if agent[:platform].match(/(?:el-7|redhat-7)/)
-      step "Upgrade openssl package..." do
+      rhel7_openssl_version = ENV["RHEL7_OPENSSL_VERSION"]
+      step "Upgrade openssl package to: " + rhel7_openssl_version  do
+        if !rhel7_openssl_version.to_s.empty? 
+          on(agent, "yum -y install " +  rhel7_openssl_version)
+        else
+          on(agent, "yum -y install openssl-1.0.1e-51.el7_2.4.x86_64")
+        end
       end
-      on(agent, "yum -y install openssl-1.0.1e-51.el7_2.4.x86_64")
     else
       step "Skipping upgrade of openssl package... (not redhat platform)" do
       end
