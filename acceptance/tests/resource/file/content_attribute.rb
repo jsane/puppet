@@ -11,7 +11,17 @@ agents.each do |agent|
 
   step "Content Attribute: using raw content"
 
-  checksums = ['md5', 'md5lite', 'sha256', 'sha256lite']
+  # In case any of the hosts happens to be fips enabled we limit to the lowest
+  # common denominator.
+  checksums_fips = ['sha256', 'sha256lite']
+  checksums_no_fips = ['md5', 'md5lite', 'sha256', 'sha256lite']
+
+  if (on(agent, facter("find in_fips_mode")).stdout =~ /true/)
+    checksums = checksums_fips
+  else
+    checksums = checksums_no_fips
+  end
+
   manifest = "file { '#{target}': content => 'This is the test file content', ensure => present }"
   manifest += checksums.collect {|checksum_type|
     "file { '#{target+checksum_type}': content => 'This is the test file content', ensure => present, checksum => #{checksum_type} }"

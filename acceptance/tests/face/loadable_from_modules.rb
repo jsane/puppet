@@ -14,6 +14,12 @@ extend Puppet::Acceptance::TempFileUtils
 initialize_temp_dirs
 
 agents.each do |agent|
+    
+  if (on(agent, facter("find in_fips_mode")).stdout =~ /true/)
+    puts "Module build, loading and installing not supported on fips enabled platforms"
+    next
+  end
+
   environmentpath = get_test_file_path(agent, 'environments')
   dev_modulepath = "#{environmentpath}/dev/modules"
 

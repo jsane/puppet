@@ -187,6 +187,9 @@ step "Enable FIPS on agent hosts..." do
       # Other platforms to come...
       next if !agent[:platform].match(/(?:el-7|redhat-7)/)
 
+      # Set digest_algorithm to sha256
+      on agent, puppet('config set digest_algorithm sha256')
+
       # Step 1: Disable prelinking
       # TODO:: Handle cases where the /etc/sysconfig/prelink might exist
       on(agent, 'echo "PRELINKING=no" > /etc/sysconfig/prelink')

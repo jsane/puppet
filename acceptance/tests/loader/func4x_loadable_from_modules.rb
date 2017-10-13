@@ -26,6 +26,7 @@ tag 'audit:medium',
 initialize_temp_dirs
 
 agents.each do |agent|
+
   # The modulepath to use in environment 'dev'
   envs_path = get_test_file_path(agent, 'environments')
   dev_modulepath = get_test_file_path(agent, 'environments/dev/modules')
