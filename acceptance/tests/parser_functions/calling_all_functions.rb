@@ -21,6 +21,19 @@ def manifest_call_each_function_from_array(functions)
       manifest << "#{function[:lambda]}\n"
     end
   end
+#  if suppl_functions
+#    suppl_functions.each_with_index do |suppl_function,index|
+#      if suppl_function[:rvalue]
+#        manifest << "$pre#{index} = \"sayeth #{suppl_function[:name].capitalize}: Scope(Class[main]): \" "
+#        manifest << "$output#{index} = #{suppl_function[:name]}(#{suppl_function[:args]}) "
+#        manifest << "#{suppl_function[:lambda]} notice \"${pre#{index}}${output#{index}}\"\n"
+#      else
+#        manifest << "$pre#{index} = \"sayeth #{suppl_function[:name].capitalize}: \" "
+#        manifest << "notice \"${pre#{index}}\"\n"
+#        manifest << "#{suppl_function[:name]}(#{suppl_function[:args]}) "
+#        manifest << "#{suppl_function[:lambda]}\n"
+#      end
+#  end
   manifest
 end
 
@@ -50,7 +63,6 @@ agents.each do |agent|
     {:name => :crit,             :args => '"consider yourself critical"',      :lambda => nil, :expected => 'consider yourself critical', :rvalue => false},
     {:name => :debug,            :args => '"consider yourself bugged"',        :lambda => nil, :expected => '', :rvalue => false}, # no output expected unless run with debug
     {:name => :defined,          :args => 'File["/tmp"]',                      :lambda => nil, :expected => 'false', :rvalue => true},
-    {:name => :digest,           :args => '"Sansa"',                           :lambda => nil, :expected => 'f16491bf0133c6103918b2edcd00cf89', :rvalue => true},
     {:name => :dig,              :args => '[100]',                             :lambda => nil, :expected => '[100]', :rvalue => true},
     {:name => :emerg,            :args => '"consider yourself emergent"',      :lambda => nil, :expected => 'consider yourself emergent', :rvalue => false},
     {:name => :err,              :args => '"consider yourself in err"',        :lambda => nil, :expected => 'consider yourself in err', :rvalue => false},
@@ -67,7 +79,6 @@ agents.each do |agent|
     {:name => :inline_template,  :args => '\'empty<%= @x %>space\'',           :lambda => nil, :expected => 'emptyspace', :rvalue => true},
     # test the living life out of this thing in lookup.rb, and it doesn't allow for a default value
     #{:name => :lookup,           :args => 'date,lookup_date',                  :lambda => nil, :expected => '', :rvalue => true},  # well tested elsewhere
-    {:name => :md5,              :args => '"Bran"',                            :lambda => nil, :expected => '723f9ac32ceb881ddf4fb8fc1020cf83', :rvalue => true},
     # Integer.new
     {:name => :Integer,          :args => '"100"',                             :lambda => nil, :expected => '100', :rvalue => true},
     {:name => :notice,           :args => '"consider yourself under notice"',  :lambda => nil, :expected => 'consider yourself under notice', :rvalue => false},
@@ -92,6 +103,16 @@ agents.each do |agent|
     {:name => :warning,          :args => '"consider yourself warned"',        :lambda => nil, :expected => 'consider yourself warned', :rvalue => false},
     # do this one last or it will not allow the others to run.
     {:name => :fail,             :args => '"Jon Snow"',                        :lambda => nil, :expected => /Error:.*Jon Snow/, :rvalue => false},
+  ]
+
+  functions_3x_nofips = [
+    {:name => :digest,           :args => '"Sansa"',                           :lambda => nil, :expected => 'f16491bf0133c6103918b2edcd00cf89', :rvalue => true},
+    {:name => :md5,              :args => '"Bran"',                            :lambda => nil, :expected => '723f9ac32ceb881ddf4fb8fc1020cf83', :rvalue => true},
+  ]
+
+  functions_3x_fips = [
+    {:name => :digest,           :args => '"Sansa"',                           :lambda => nil, :expected => '4ebf3a5527313f06c7965749d7764c15cba6fe86da11691ca9bd0ce448563979', :rvalue => true},
+    {:name => :sha256,              :args => '"Bran"',                            :lambda => nil, :expected => '824264f7f73d6026550b52a671c50ad0c4452af66c24f3784e30f515353f2ce0', :rvalue => true}
   ]
 
   puppet_version = on(agent, puppet('--version')).stdout.chomp
@@ -198,11 +219,22 @@ PP
      end
 
    file_path = agent.tmpfile('apply_manifest.pp')
-   create_remote_file(agent, file_path, manifest_call_each_function_from_array(functions_3x))
+
+   # REMIND/TODO: This needs to change so we look for fips platform name than what we have below
+   # We have the fips sensitive versions of the functions to be called separately based on the
+   # test target platform 
+   if agent["platform"] =~ /el-7/
+     consolidated_3x_functions = functions_3x + functions_3x_fips
+   else
+     consolidated_3x_functions = functions_3x + functions_3x_nofips
+   end
+
+   create_remote_file(agent, file_path, manifest_call_each_function_from_array(consolidated_3x_functions))
+
    trusted_3x = puppet_version =~ /\A3\./ ? '--trusted_node_data ' : ''
    on(agent, puppet("apply #{trusted_3x} --color=false --modulepath #{testdir}/environments/production/modules/ #{file_path}"),
       :acceptable_exit_codes => 1 ) do |result|
-        functions_3x.each do |function|
+        consolidated_3x_functions.each do |function|
           # append the function name to the matcher so it's more expressive
           if function[:expected].is_a?(String)
             if function[:name] == :fail

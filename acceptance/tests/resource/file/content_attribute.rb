@@ -11,7 +11,15 @@ agents.each do |agent|
 
   step "Content Attribute: using raw content"
 
-  checksums = ['md5', 'md5lite', 'sha256', 'sha256lite']
+  platform = agent[:platform]
+  # For time being we are using el-7 for identifying a FIPS agent
+  # till we actually have proper FIPS platform names
+  if platform =~ /el-7/
+    checksums = ['sha256', 'sha256lite']
+  else
+    checksums = ['md5', 'md5lite', 'sha256', 'sha256lite']
+  end
+
   manifest = "file { '#{target}': content => 'This is the test file content', ensure => present }"
   manifest += checksums.collect {|checksum_type|
     "file { '#{target+checksum_type}': content => 'This is the test file content', ensure => present, checksum => #{checksum_type} }"
