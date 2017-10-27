@@ -141,6 +141,11 @@ step "Install puppetserver..." do
 
     install_puppetlabs_dev_repo(master, 'puppet-agent', ENV['SHA'])
     master.install_package('puppetserver')
+
+    # REMIND: Experimental - 
+    # Switch to using sha256 to work in fips mode.
+    on master, puppet('config set digest_algorithm sha256')
+      
   end
 end
 
