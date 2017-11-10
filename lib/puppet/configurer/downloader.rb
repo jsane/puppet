@@ -53,6 +53,7 @@ class Puppet::Configurer::Downloader
       :force => true,
       :backup => false,
       :noop => false
+      :checksum => sha256
     }
     if !Puppet.features.microsoft_windows?
       defargs.merge!(
