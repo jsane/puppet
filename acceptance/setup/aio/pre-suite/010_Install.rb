@@ -240,10 +240,7 @@ step "Enable FIPS on agent hosts..." do
       # TODO:
       # Ensure that agent is actually in fips mode by examining the contents of
       # /proc/sys/crypto/fips_enabled and that it is 1
-
-      # Switch to using sha256 to work in fips mode.
-      on agent, puppet('config set digest_algorithm sha256')
-      
+      on(agent, "cat /proc/sys/crypto/fips_enabled")
     end
   end
 end

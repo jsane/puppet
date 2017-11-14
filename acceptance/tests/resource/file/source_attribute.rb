@@ -268,8 +268,8 @@ test_name "The source attribute" do
     byte_after_md5lite = 513
     source_content[byte_after_md5lite] = 'z'
     create_remote_file agent, source, source_content
-
-    if fips_host_present == 1
+    
+    if (on(agent, facter("find in_fips_mode")).stdout =~ /true/)
       apply_manifest_on agent, "file { '#{localsource_testdir}/targetsha256lite': source => '#{source}', ensure => present, checksum => sha256lite }" do
         assert_no_match(/(content changed|defined content)/, stdout, "Shouldn't have overwrote any files")
       end
