@@ -21,6 +21,30 @@ class Puppet::FileServing::HttpMetadata < Puppet::FileServing::Metadata
       @checksums[:md5] = "{md5}#{checksum}"
     end
 
+    if checksum = http_response['content-sha256']
+      # convert base64 digest to hex
+      checksum = checksum.unpack("m0").first.unpack("H*").first
+      @checksums[:sha256] = "{sha256}#{checksum}"
+    end
+
+    if checksum = http_response['content-sha384']
+      # convert base64 digest to hex
+      checksum = checksum.unpack("m0").first.unpack("H*").first
+      @checksums[:sha384] = "{sha384}#{checksum}"
+    end
+
+    if checksum = http_response['content-sha512']
+      # convert base64 digest to hex
+      checksum = checksum.unpack("m0").first.unpack("H*").first
+      @checksums[:sha512] = "{sha512}#{checksum}"
+    end
+
+    if checksum = http_response['content-sha224']
+      # convert base64 digest to hex
+      checksum = checksum.unpack("m0").first.unpack("H*").first
+      @checksums[:sha224] = "{sha224}#{checksum}"
+    end
+
     if last_modified = http_response['last-modified']
       mtime = DateTime.httpdate(last_modified).to_time
       @checksums[:mtime] = "{mtime}#{mtime.utc}"
