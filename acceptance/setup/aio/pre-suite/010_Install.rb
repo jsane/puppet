@@ -190,7 +190,16 @@ step "Enable FIPS on agent hosts..." do
     use_system_openssl = func_use_system_openssl()
     if use_system_openssl
       # Other platforms to come...
-      next if !agent[:platform].match(/(?:el-7|redhat-7)/)
+      if !agent[:platform].match(/(?:el-7|redhat-7)/)
+        # on agent, puppet('config set digest_algorithm sha256')
+        next
+      end
+
+      # Switch to using sha256 to work in fips mode.
+      on agent, puppet('config set digest_algorithm sha256')
+
+      # Examine that the digest_algorithm actually took effect.
+      on(agent, "cat /etc/puppetlabs/puppet/puppet.conf")
 
       # Step 1: Disable prelinking
       # TODO:: Handle cases where the /etc/sysconfig/prelink might exist
@@ -243,8 +252,6 @@ step "Enable FIPS on agent hosts..." do
       # Ensure that agent is actually in fips mode by examining the contents of
       # /proc/sys/crypto/fips_enabled and that it is 1
 
-      # Switch to using sha256 to work in fips mode.
-      on agent, puppet('config set digest_algorithm sha256')
       
     end
   end
