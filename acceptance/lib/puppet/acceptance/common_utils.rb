@@ -51,7 +51,11 @@ module Puppet
           with_puppet_running_on(master, master_opts) do
 
             hosts.each do |host|
-              next if host['roles'].include? 'master'
+              if host['roles'].include? 'master'
+                on(master, "tail -15 /opt/puppetlabs/puppet/lib/ruby/vendor_ruby/puppet/configurer/downloader.rb ")
+                next
+              end
+
 
               step "Agents: Run agent --test first time to gen CSR"
               on host, puppet("agent --test --server #{master}"), :acceptable_exit_codes => [1]
