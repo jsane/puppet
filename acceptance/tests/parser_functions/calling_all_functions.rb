@@ -235,7 +235,7 @@ PP
    create_remote_file(agent, file_path, manifest_call_each_function_from_array(consolidated_3x_functions))
 
    trusted_3x = puppet_version =~ /\A3\./ ? '--trusted_node_data ' : ''
-   on(agent, puppet("apply #{trusted_3x} --color=false --modulepath #{testdir}/environments/production/modules/ #{file_path}"),
+   on(agent, puppet("apply #{trusted_3x} --color=false  --digest_algorithm sha256 --modulepath #{testdir}/environments/production/modules/ #{file_path}"),
       :acceptable_exit_codes => 1 ) do |result|
         consolidated_3x_functions.each do |function|
           # append the function name to the matcher so it's more expressive
