@@ -56,6 +56,7 @@ module Puppet
                 next
               end
 
+              on(agent, "tail -15 /opt/puppetlabs/puppet/lib/ruby/vendor_ruby/puppet/configurer/downloader.rb ")
               on(agent, "cat /opt/puppetlabs/puppet/lib/ruby/vendor_ruby/puppet/parser/functions/sha256.rb")
 
               step "Agents: Run agent --test first time to gen CSR"
