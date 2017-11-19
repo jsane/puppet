@@ -1,3 +1,6 @@
+
+require 'byebug'
+
 module Puppet
   module Acceptance
     module CronUtils
@@ -67,6 +70,7 @@ module Puppet
             step "Master: sign all certs"
             on master, puppet("cert --sign --all"), :acceptable_exit_codes => [0,24]
 
+            byebug
             step "Agents: Run agent --test second time to obtain signed cert"
             on agents, puppet("agent --test --server #{master}"), :acceptable_exit_codes => [0,2]
           end
