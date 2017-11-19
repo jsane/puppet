@@ -114,7 +114,7 @@ agents.each do |agent|
     # REMIND, TODO::
     # Disabling it temporarily till the master/puppetserver is enabled as this 
     # requires the digest algorithm to be adjusted to sha256 on the server.
-    {:name => :digest,           :args => '"Sansa"',                           :lambda => nil, :expected => '4ebf3a5527313f06c7965749d7764c15cba6fe86da11691ca9bd0ce448563979', :rvalue => true}
+    {:name => :digest,           :args => '"Sansa"',                           :lambda => nil, :expected => '4ebf3a5527313f06c7965749d7764c15cba6fe86da11691ca9bd0ce448563979', :rvalue => true},
     {:name => :sha256,              :args => '"Bran"',                            :lambda => nil, :expected => '824264f7f73d6026550b52a671c50ad0c4452af66c24f3784e30f515353f2ce0', :rvalue => true}
   ]
 
