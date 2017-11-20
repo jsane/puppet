@@ -39,6 +39,7 @@ module Puppet::Util::Checksums
   # Calculate a checksum using Digest::SHA256.
   def sha256(content)
     require 'digest/sha2'
+    puts "Doing sha256 on " + content.to_s
     Digest::SHA256.hexdigest(content)
   end
 
@@ -85,6 +86,7 @@ module Puppet::Util::Checksums
 
   # Calculate a checksum using Digest::MD5.
   def md5(content)
+    puts "Doing md5 on " + content.to_s
     Digest::MD5.hexdigest(content)
   end
 
