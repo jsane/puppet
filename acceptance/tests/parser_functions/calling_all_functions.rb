@@ -234,7 +234,7 @@ PP
 
    create_remote_file(agent, file_path, manifest_call_each_function_from_array(consolidated_3x_functions))
 
-   on(agent, "cat $file_path")
+   # on(agent, "cat $file_path")
 
    trusted_3x = puppet_version =~ /\A3\./ ? '--trusted_node_data ' : ''
    on(agent, puppet("apply #{trusted_3x} --color=false  --digest_algorithm sha256 --modulepath #{testdir}/environments/production/modules/ #{file_path}"),
