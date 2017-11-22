@@ -52,7 +52,7 @@ agents.each do |agent|
   #   special cases: contain (call this from call_em_all)
   #   do fail last because it errors out
 
-  functions_3x = [
+  functions_3x_fips = [
     {:name => :alert,            :args => '"consider yourself on alert"',      :lambda => nil, :expected => 'consider yourself on alert', :rvalue => false},
     {:name => :binary_file,      :args => '"call_em_all/rickon.txt"',          :lambda => nil, :expected => '', :rvalue => true},
     #{:name => :break,            :args => '',                                  :lambda => nil, :expected => '', :rvalue => false},
@@ -107,18 +107,66 @@ agents.each do |agent|
     {:name => :fail,             :args => '"Jon Snow"',                        :lambda => nil, :expected => /Error:.*Jon Snow/, :rvalue => false},
   ]
 
+#########################################################
+
   functions_3x_nofips = [
+    {:name => :alert,            :args => '"consider yourself on alert"',      :lambda => nil, :expected => 'consider yourself on alert', :rvalue => false},
+    {:name => :binary_file,      :args => '"call_em_all/rickon.txt"',          :lambda => nil, :expected => '', :rvalue => true},
+    #{:name => :break,            :args => '',                                  :lambda => nil, :expected => '', :rvalue => false},
+    # this is explicitly called from call_em_all module which is included below
+    #{:name => :contain,          :args => 'call_em_all',                       :lambda => nil, :expected => '', :rvalue => true},
+    # below doens't instance the resource. no output
+    {:name => :create_resources, :args => 'notify, {"w"=>{message=>"winter is coming"}}',      :lambda => nil, :expected => '', :rvalue => false},
+    {:name => :crit,             :args => '"consider yourself critical"',      :lambda => nil, :expected => 'consider yourself critical', :rvalue => false},
+    {:name => :debug,            :args => '"consider yourself bugged"',        :lambda => nil, :expected => '', :rvalue => false}, # no output expected unless run with debug
+    {:name => :defined,          :args => 'File["/tmp"]',                      :lambda => nil, :expected => 'false', :rvalue => true},
+    {:name => :dig,              :args => '[100]',                             :lambda => nil, :expected => '[100]', :rvalue => true},
     {:name => :digest,           :args => '"Sansa"',                           :lambda => nil, :expected => 'f16491bf0133c6103918b2edcd00cf89', :rvalue => true},
+    {:name => :emerg,            :args => '"consider yourself emergent"',      :lambda => nil, :expected => 'consider yourself emergent', :rvalue => false},
+    {:name => :err,              :args => '"consider yourself in err"',        :lambda => nil, :expected => 'consider yourself in err', :rvalue => false},
+    {:name => :file,             :args => '"call_em_all/rickon.txt"',          :lambda => nil, :expected => 'who?', :rvalue => true},
+    {:name => :fqdn_rand,        :args => '100000',                            :lambda => nil, :expected => /Fqdn_rand: Scope\(Class\[main\]\): \d{1,5}/, :rvalue => true},
+    # generate requires a fully qualified exe; which requires specifics for windows vs posix
+    #{:name => :generate,         :args => generator[:args],                    :lambda => nil, :expected => generator[:expected], :rvalue => true},
+    {:name => :hiera_array,      :args => 'date,default_array',                :lambda => nil, :expected => 'default_array', :rvalue => true},
+    {:name => :hiera_hash,       :args => 'date,default_hash',                 :lambda => nil, :expected => 'default_hash', :rvalue => true},
+    {:name => :hiera_include,    :args => 'date,call_em_all',                  :lambda => nil, :expected => '', :rvalue => false},
+    {:name => :hiera,            :args => 'date,default_date',                 :lambda => nil, :expected => 'default_date', :rvalue => true},
+    {:name => :include,          :args => 'call_em_all',                       :lambda => nil, :expected => '', :rvalue => false},
+    {:name => :info,             :args => '"consider yourself informed"',      :lambda => nil, :expected => '', :rvalue => false}, # no ouput unless in debug mode
+    {:name => :inline_template,  :args => '\'empty<%= @x %>space\'',           :lambda => nil, :expected => 'emptyspace', :rvalue => true},
+    # test the living life out of this thing in lookup.rb, and it doesn't allow for a default value
+    #{:name => :lookup,           :args => 'date,lookup_date',                  :lambda => nil, :expected => '', :rvalue => true},  # well tested elsewhere
     {:name => :md5,              :args => '"Bran"',                            :lambda => nil, :expected => '723f9ac32ceb881ddf4fb8fc1020cf83', :rvalue => true},
+    # Integer.new
+    {:name => :Integer,          :args => '"100"',                             :lambda => nil, :expected => '100', :rvalue => true},
+    {:name => :notice,           :args => '"consider yourself under notice"',  :lambda => nil, :expected => 'consider yourself under notice', :rvalue => false},
+    {:name => :realize,          :args => 'User[arya]',                        :lambda => nil, :expected => '', :rvalue => false},  # TODO: create a virtual first
+    {:name => :regsubst,         :args => '"Cersei","Cer(\\\\w)ei","Daenery\\\\1"',:lambda => nil, :expected => 'Daenerys', :rvalue => true},
+    # explicitly called in call_em_all; implicitly called by the include above
+    #{:name => :require,          :args => '[4,5,6]',                          :lambda => nil, :expected => '', :rvalue => true},
+    # 4x output contains brackets around scanf output
+    {:name => :scanf,            :args => '"Eddard Stark","%6s"',              :lambda => nil, :expected => '[Eddard]', :rvalue => true},
+    {:name => :sha1,             :args => '"Sansa"',                           :lambda => nil, :expected => '4337ce5e4095e565d51e0ef4c80df1fecf238b29', :rvalue => true},
+    {:name => :shellquote,       :args => '["-1", "--two"]',                   :lambda => nil, :expected => '-1 --two', :rvalue => true},
+    # 4x output contains brackets around split output and commas btwn values
+    {:name => :split,            :args => '"9,8,7",","',                       :lambda => nil, :expected => '[9, 8, 7]', :rvalue => true},
+    {:name => :sprintf,          :args => '"%b","123"',                        :lambda => nil, :expected => '1111011', :rvalue => true},
+    {:name => :step,             :args => '[100,99],1',                        :lambda => nil, :expected => 'Iterator[Integer]-Value', :rvalue => true},
+    # explicitly called in call_em_all
+    #{:name => :tag,              :args => '[4,5,6]',                          :lambda => nil, :expected => '', :rvalue => true},
+    {:name => :tagged,           :args => '"yer_it"',                          :lambda => nil, :expected => 'false', :rvalue => true},
+    {:name => :template,         :args => '"call_em_all/template.erb"',        :lambda => nil, :expected => 'no defaultsno space', :rvalue => true},
+    {:name => :type,             :args => '42',                                :lambda => nil, :expected => 'Integer[42, 42]', :rvalue => true},
+    {:name => :versioncmp,       :args => '"1","2"',                           :lambda => nil, :expected => '-1', :rvalue => true},
+    {:name => :warning,          :args => '"consider yourself warned"',        :lambda => nil, :expected => 'consider yourself warned', :rvalue => false},
+    # do this one last or it will not allow the others to run.
+    {:name => :fail,             :args => '"Jon Snow"',                        :lambda => nil, :expected => /Error:.*Jon Snow/, :rvalue => false},
   ]
 
-  functions_3x_fips = [
-    # REMIND, TODO::
-    # Disabling it temporarily till the master/puppetserver is enabled as this 
-    # requires the digest algorithm to be adjusted to sha256 on the server.
-    {:name => :digest,           :args => '"Sansa"',                           :lambda => nil, :expected => '4ebf3a5527313f06c7965749d7764c15cba6fe86da11691ca9bd0ce448563979', :rvalue => true},
-    {:name => :sha256,              :args => '"Bran"',                            :lambda => nil, :expected => '824264f7f73d6026550b52a671c50ad0c4452af66c24f3784e30f515353f2ce0', :rvalue => true}
-  ]
+
+########################################################
+
 
   puppet_version = on(agent, puppet('--version')).stdout.chomp
 
@@ -229,9 +277,9 @@ PP
    # We have the fips sensitive versions of the functions to be called separately based on the
    # test target platform 
    if agent["platform"] =~ /el-7/
-     consolidated_3x_functions = functions_3x + functions_3x_fips
+     functions_3x = functions_3x_fips
    else
-     consolidated_3x_functions = functions_3x + functions_3x_nofips
+     functions_3x = functions_3x_nofips
    end
 
    create_remote_file(agent, file_path, manifest_call_each_function_from_array(functions_3x))
@@ -241,7 +289,7 @@ PP
    trusted_3x = puppet_version =~ /\A3\./ ? '--trusted_node_data ' : ''
    on(agent, puppet("apply #{trusted_3x} --color=false  --modulepath #{testdir}/environments/production/modules/ #{file_path}"),
       :acceptable_exit_codes => 1 ) do |result|
-        consolidated_3x_functions.each do |function|
+        functions_3x.each do |function|
           # append the function name to the matcher so it's more expressive
           if function[:expected].is_a?(String)
             if function[:name] == :fail

@@ -144,7 +144,7 @@ step "Install puppetserver..." do
 
     # REMIND: Experimental - 
     # Switch to using sha256 to work in fips mode.
-    on master, puppet('config set digest_algorithm sha256')
+    # on master, puppet('config set digest_algorithm sha256')
       
   end
 end
@@ -186,9 +186,6 @@ step "Enable FIPS on agent hosts..." do
   agents.each do |agent|
     next if agent == master # Only on agents.
 
-    # Switch to using sha256 on all agents..
-    on agent, puppet('config set digest_algorithm sha256')
-
     # Do this only on rhel7, rhel6, f24, f25
     use_system_openssl = func_use_system_openssl()
     if use_system_openssl
@@ -197,6 +194,9 @@ step "Enable FIPS on agent hosts..." do
         # on agent, puppet('config set digest_algorithm sha256')
         next
       end
+
+      # Set digest_algorithm to sha256
+      on agent, puppet('config set digest_algorithm sha256')
 
       # Step 1: Disable prelinking
       # TODO:: Handle cases where the /etc/sysconfig/prelink might exist
