@@ -11,7 +11,15 @@ test_name "The source attribute" do
   @target_dir_on_windows  = 'C:/windows/temp/source_attr_test_dir'
   @target_dir_on_nix      = '/tmp/source_attr_test_dir'
 
-  checksums = [nil, 'md5', 'md5lite', 'sha256', 'sha256lite', 'ctime', 'mtime']
+
+  platform = agent[:platform]
+  # For time being we are using el-7 for identifying a FIPS agent
+  # till we actually have proper FIPS platform names
+  if platform =~ /el-7/
+    checksums = [nil, 'sha256', 'sha256lite', 'ctime', 'mtime']
+  else
+    checksums = [nil, 'md5', 'md5lite', 'sha256', 'sha256lite', 'ctime', 'mtime']
+  end
 
   orig_installed_modules = get_installed_modules_for_hosts hosts
   teardown do
@@ -252,9 +260,17 @@ test_name "The source attribute" do
     byte_after_md5lite = 513
     source_content[byte_after_md5lite] = 'z'
     create_remote_file agent, source, source_content
-    apply_manifest_on agent, "file { '#{localsource_testdir}/targetmd5lite': source => '#{source}', ensure => present, checksum => md5lite } file { '#{localsource_testdir}/targetsha256lite': source => '#{source}', ensure => present, checksum => sha256lite }" do
-      assert_no_match(/(content changed|defined content)/, stdout, "Shouldn't have overwrote any files")
-    end
+    
+
+    if platform =~ /el-7/
+      apply_manifest_on agent, "file { '#{localsource_testdir}/targetsha256lite': source => '#{source}', ensure => present, checksum => sha256lite }" do
+        assert_no_match(/(content changed|defined content)/, stdout, "Shouldn't have overwrote any files")
+      end
+    else
+      apply_manifest_on agent, "file { '#{localsource_testdir}/targetmd5lite': source => '#{source}', ensure => present, checksum => md5lite } file { '#{localsource_testdir}/targetsha256lite': source => '#{source}', ensure => present, checksum => sha256lite }" do
+        assert_no_match(/(content changed|defined content)/, stdout, "Shouldn't have overwrote any files")
+      end
+    end 
 
     local_module_manifest = ""
     checksums.each do |checksum_type|

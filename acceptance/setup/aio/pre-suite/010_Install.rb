@@ -248,7 +248,7 @@ step "Enable FIPS on agent hosts..." do
       # TODO:
       # Ensure that agent is actually in fips mode by examining the contents of
       # /proc/sys/crypto/fips_enabled and that it is 1
-
+      on(agent, "cat /proc/sys/crypto/fips_enabled")
       
     end
   end

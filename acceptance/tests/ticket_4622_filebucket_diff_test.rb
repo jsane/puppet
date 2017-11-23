@@ -1,5 +1,6 @@
 test_name "ticket 4622 filebucket diff test."
 confine :except, :platform => 'windows'
+confine :except, :platform => /^el-7/
 skip_test 'skip test, no non-Windows agents specified' if agents.empty?
 
 tag 'audit:medium',
@@ -25,6 +26,12 @@ end
 step "Master: Start Puppet Master" do
   with_puppet_running_on(master, {}) do
     agents.each do |agent|
+
+      platform = agent[:platform]
+      # For time being we are using el-7 for identifying a FIPS agent
+      # till we actually have proper FIPS platform names
+      if platform =~ /el-7/
+      end
 
       tmpfile = agent.tmpfile('testfile')
       remote_str = "--remote --server #{master}"
