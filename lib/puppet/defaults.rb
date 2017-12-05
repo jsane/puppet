@@ -899,8 +899,11 @@ When certificate_revocation is set to 'false', Puppet will disable all certifica
 attempt to download the CRL.
 EOT
     },
+    # REMIND - FIPS change. The default alg needs to be one of the fips approved
+    # Otherwise it will cause some things to fail like getting file resources with content
+    # when specified in site.pp in manifests. 
     :digest_algorithm => {
-        :default  => 'md5',
+        :default  => 'sha256',
         :type     => :enum,
         :values => ["md5", "sha256"],
         :desc     => 'Which digest algorithm to use for file resources and the filebucket.
