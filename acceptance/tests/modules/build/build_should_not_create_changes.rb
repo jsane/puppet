@@ -9,6 +9,11 @@ defaultversion = '0.1.0'
 buildpath = "#{modname}/pkg/#{modauthor}-#{modname}-#{defaultversion}"
 
 agents.each do |agent|
+
+  if (on(agent, facter("find in_fips_mode")).stdout =~ /true/)
+    skip_test "Module build, loading and installing not supported on fips enabled platforms"
+  end
+
   teardown do
     on(agent, "rm -rf #{modname}")
   end
