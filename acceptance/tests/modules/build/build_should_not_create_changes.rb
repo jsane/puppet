@@ -11,7 +11,8 @@ buildpath = "#{modname}/pkg/#{modauthor}-#{modname}-#{defaultversion}"
 agents.each do |agent|
 
   if (on(agent, facter("find in_fips_mode")).stdout =~ /true/)
-    skip_test "Module build, loading and installing not supported on fips enabled platforms"
+    puts "Module build, loading and installing not supported on fips enabled platforms"
+    next
   end
 
   teardown do

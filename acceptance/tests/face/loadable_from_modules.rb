@@ -16,7 +16,8 @@ initialize_temp_dirs
 agents.each do |agent|
     
   if (on(agent, facter("find in_fips_mode")).stdout =~ /true/)
-    skip_test "Module build, loading and installing not supported on fips enabled platforms"
+    puts "Module build, loading and installing not supported on fips enabled platforms"
+    next
   end
 
   environmentpath = get_test_file_path(agent, 'environments')
@@ -71,10 +72,6 @@ module Puppet::Helloworld
   module_function :print
 end
 EOM
-
-  if (on(agent, facter("find in_fips_mode")).stdout =~ /true/)
-    skip_test "Module build, loading and installing not supported on fips enabled platforms"
-  end
 
   on agent, puppet('module', 'build', 'helloworld')
   on agent, puppet('module', 'install', '--ignore-dependencies', '--target-dir', dev_modulepath, 'helloworld/pkg/puppetlabs-helloworld-0.1.0.tar.gz')

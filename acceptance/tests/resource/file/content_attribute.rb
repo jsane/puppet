@@ -11,7 +11,17 @@ agents.each do |agent|
 
   step "Content Attribute: using raw content"
 
-  checksums = ['md5', 'md5lite', 'sha256', 'sha256lite']
+  # In case any of the hosts happens to be fips enabled we limit to the lowest
+  # common denominator.
+  checksums_fips = ['sha256', 'sha256lite']
+  checksums_no_fips = ['md5', 'md5lite', 'sha256', 'sha256lite']
+
+  if (on(agent, facter("find in_fips_mode")).stdout =~ /true/)
+    checksums = checksums_fips
+  else
+    checksums = checksums_no_fips
+  end
+
   manifest = "file { '#{target}': content => 'This is the test file content', ensure => present }"
   manifest += checksums.collect {|checksum_type|
     "file { '#{target+checksum_type}': content => 'This is the test file content', ensure => present, checksum => #{checksum_type} }"
@@ -43,20 +53,20 @@ agents.each do |agent|
   step "Backup file into the filebucket"
   on agent, puppet_filebucket("backup --local #{target}")
 
-  step "Modify file to force apply to retrieve file from local clientbucket"
-  on agent, "echo 'This is the modified file contents' > #{target}"
-
-  dir = on(agent, puppet_filebucket("--configprint clientbucketdir")).stdout.chomp
+  bucketdir="not set"
+  on agent, puppet_filebucket("--configprint bucketdir") do
+    bucketdir = stdout.chomp
+  end
 
   manifest = %Q|
     filebucket { 'local':
-      path => '#{dir}',
+      path => '#{bucketdir}',
     }
 
     file { '#{target}':
-      ensure  => present,
       content => '{md5}18571d3a04b2bb7ccfdbb2c44c72caa9',
-      backup  => local,
+      ensure => present,
+      backup => local,
     }
   |
 

@@ -27,10 +27,6 @@ initialize_temp_dirs
 
 agents.each do |agent|
 
-  if (on(agent, facter("find in_fips_mode")).stdout =~ /true/)
-    skip_test "Module build, loading and installing not supported on fips enabled platforms"
-  end
-
   # The modulepath to use in environment 'dev'
   envs_path = get_test_file_path(agent, 'environments')
   dev_modulepath = get_test_file_path(agent, 'environments/dev/modules')
