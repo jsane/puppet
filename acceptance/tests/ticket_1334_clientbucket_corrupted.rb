@@ -7,14 +7,12 @@ test_name 'C99977 corrupted clientbucket' do
     tmpfile = agent.tmpfile('c99977file')
     unmanaged_content = "unmanaged\n"
     
-    platform = agent[:platform]
-    # For time being we are using el-7 for identifying a FIPS agent
-    # till we actually have proper FIPS platform names
-    if platform =~ /el-7/
+    if (on(agent, facter("find in_fips_mode")).stdout =~ /true/)
       unmanaged_sha = Digest::SHA256.hexdigest(unmanaged_content)
     else
       unmanaged_sha = Digest::MD5.hexdigest(unmanaged_content)
     end
+
     managed_content = "managed\n"
     manifest = "file { '#{tmpfile}': content => '#{managed_content}', }"
 

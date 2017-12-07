@@ -107,8 +107,6 @@ agents.each do |agent|
     {:name => :fail,             :args => '"Jon Snow"',                        :lambda => nil, :expected => /Error:.*Jon Snow/, :rvalue => false},
   ]
 
-#########################################################
-
   functions_3x_nofips = [
     {:name => :alert,            :args => '"consider yourself on alert"',      :lambda => nil, :expected => 'consider yourself on alert', :rvalue => false},
     {:name => :binary_file,      :args => '"call_em_all/rickon.txt"',          :lambda => nil, :expected => '', :rvalue => true},
@@ -163,10 +161,6 @@ agents.each do |agent|
     # do this one last or it will not allow the others to run.
     {:name => :fail,             :args => '"Jon Snow"',                        :lambda => nil, :expected => /Error:.*Jon Snow/, :rvalue => false},
   ]
-
-
-########################################################
-
 
   puppet_version = on(agent, puppet('--version')).stdout.chomp
 
@@ -273,18 +267,13 @@ PP
 
    file_path = agent.tmpfile('apply_manifest.pp')
 
-   # REMIND/TODO: This needs to change so we look for fips platform name than what we have below
-   # We have the fips sensitive versions of the functions to be called separately based on the
-   # test target platform 
-   if agent["platform"] =~ /el-7/
+   if (on(agent, facter("find in_fips_mode")).stdout =~ /true/)
      functions_3x = functions_3x_fips
    else
      functions_3x = functions_3x_nofips
    end
 
    create_remote_file(agent, file_path, manifest_call_each_function_from_array(functions_3x))
-
-   # on(agent, "cat $file_path")
 
    trusted_3x = puppet_version =~ /\A3\./ ? '--trusted_node_data ' : ''
    on(agent, puppet("apply #{trusted_3x} --color=false  --modulepath #{testdir}/environments/production/modules/ #{file_path}"),

@@ -12,13 +12,22 @@ test_name "The source attribute" do
   @target_dir_on_nix      = '/tmp/source_attr_test_dir'
 
 
-  platform = agent[:platform]
-  # For time being we are using el-7 for identifying a FIPS agent
-  # till we actually have proper FIPS platform names
-  if platform =~ /el-7/
-    checksums = [nil, 'sha256', 'sha256lite', 'ctime', 'mtime']
+  # In case any of the hosts happens to be fips enabled we limit to the lowest
+  # common denominator.
+  checksums_fips = [nil, 'sha256', 'sha256lite', 'ctime', 'mtime']
+  checksums_no_fips = [nil, 'md5', 'md5lite', 'sha256', 'sha256lite', 'ctime', 'mtime']
+ 
+  fips_host_present = 0
+  hosts.each do |host|
+    if (on(host, facter("find in_fips_mode")).stdout =~ /true/)
+      fips_host_present = 1
+    end
+  end
+  
+  if fips_host_present == 1
+    checksums = checksums_fips
   else
-    checksums = [nil, 'md5', 'md5lite', 'sha256', 'sha256lite', 'ctime', 'mtime']
+    checksums = checksums_no_fips
   end
 
   orig_installed_modules = get_installed_modules_for_hosts hosts
@@ -262,7 +271,7 @@ test_name "The source attribute" do
     create_remote_file agent, source, source_content
     
 
-    if platform =~ /el-7/
+    if fips_host_present == 1
       apply_manifest_on agent, "file { '#{localsource_testdir}/targetsha256lite': source => '#{source}', ensure => present, checksum => sha256lite }" do
         assert_no_match(/(content changed|defined content)/, stdout, "Shouldn't have overwrote any files")
       end
