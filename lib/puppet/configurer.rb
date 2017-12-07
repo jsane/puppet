@@ -63,13 +63,7 @@ class Puppet::Configurer
     @transaction_uuid = transaction_uuid || SecureRandom.uuid
     @job_id = job_id
     @static_catalog = true
-
-    # Condition this for platforms running in fips mode
-    supported_checksums = Puppet[:supported_checksum_types]
-    supported_checksums.delete('md5')
-    supported_checksums.delete('md5lite')
-    @checksum_type = supported_checksums
- 
+    @checksum_type = Puppet[:supported_checksum_types]
     @handler = Puppet::Configurer::PluginHandler.new()
   end
 
