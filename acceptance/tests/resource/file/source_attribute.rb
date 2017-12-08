@@ -7,7 +7,23 @@ extend Puppet::Acceptance::ModuleUtils
 @target_dir_on_windows  = 'C:/windows/temp/source_attr_test_dir'
 @target_dir_on_nix      = '/tmp/source_attr_test_dir'
 
-checksums = [nil, 'md5', 'md5lite', 'sha256', 'sha256lite', 'ctime', 'mtime']
+ # In case any of the hosts happens to be fips enabled we limit to the lowest
+ # common denominator.
+ checksums_fips = [nil, 'sha256', 'sha256lite', 'ctime', 'mtime']
+ checksums_no_fips = [nil, 'md5', 'md5lite', 'sha256', 'sha256lite', 'ctime', 'mtime']
+
+ fips_host_present = 0
+ hosts.each do |host|
+   if (on(host, facter("find in_fips_mode")).stdout =~ /true/)
+     fips_host_present = 1
+   end
+ end  
+ 
+ if fips_host_present == 1
+   checksums = checksums_fips
+ else
+   checksums = checksums_no_fips
+ end
 
 orig_installed_modules = get_installed_modules_for_hosts hosts
 teardown do
@@ -248,8 +264,16 @@ agents.each do |agent|
   byte_after_md5lite = 513
   source_content[byte_after_md5lite] = 'z'
   create_remote_file agent, source, source_content
-  apply_manifest_on agent, "file { '#{localsource_testdir}/targetmd5lite': source => '#{source}', ensure => present, checksum => md5lite } file { '#{localsource_testdir}/targetsha256lite': source => '#{source}', ensure => present, checksum => sha256lite }" do
-    assert_no_match(/(content changed|defined content)/, stdout, "Shouldn't have overwrote any files")
+
+
+  if (on(agent, facter("find in_fips_mode")).stdout =~ /true/)
+    apply_manifest_on agent, "file { '#{localsource_testdir}/targetsha256lite': source => '#{source}', ensure => present, checksum => sha256lite }" do
+      assert_no_match(/(content changed|defined content)/, stdout, "Shouldn't have overwrote any files")
+    end
+  else
+    apply_manifest_on agent, "file { '#{localsource_testdir}/targetmd5lite': source => '#{source}', ensure => present, checksum => md5lite } file { '#{localsource_testdir}/targetsha256lite': source => '#{source}', ensure => present, checksum => sha256lite }" do
+      assert_no_match(/(content changed|defined content)/, stdout, "Shouldn't have overwrote any files")
+    end
   end
 
   local_module_manifest = ""

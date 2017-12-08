@@ -1,6 +1,12 @@
 test_name "puppet module build (agent)"
 
 agents.each do |agent|
+    
+  if (on(agent, facter("find in_fips_mode")).stdout =~ /true/)
+    puts "Module build, loading and installing not supported on fips enabled platforms"
+    next
+  end
+
   teardown do
     on agent, 'rm -rf bar'
   end
