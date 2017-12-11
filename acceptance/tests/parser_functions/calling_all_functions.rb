@@ -252,7 +252,7 @@ PP
    if (on(agent, facter("find in_fips_mode")).stdout =~ /true/)
      functions_3x = functions_3x_fips
    else
-     functions_3x = functions_3x_nofips
+     functions_3x = functions_3x_no_fips
    end
 
    create_remote_file(agent, file_path, manifest_call_each_function_from_array(functions_3x))
