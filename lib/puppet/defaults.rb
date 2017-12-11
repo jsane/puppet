@@ -946,7 +946,6 @@ EOT
     },
     :digest_algorithm => {
         :default  => lambda { default_digest_alg },
-        :default  => 'md5',
         :type     => :enum,
         :values => ["md5", "sha256"],
         :desc     => 'Which digest algorithm to use for file resources and the filebucket.
