@@ -27,5 +27,9 @@ agents.each do |agent|
   on agent, "test -f #{scratch}/ssl/certs/#{target}.pem"
 
   step "verify the private key for #{target} exists"
-  on agent, "grep 'BEGIN RSA PRIVATE KEY' #{scratch}/ssl/private_keys/#{target}.pem > /dev/null 2>&1"
+  if (on(agent, facter("find in_fips_mode")).stdout =~ /true/)
+    on agent, "grep 'BEGIN PRIVATE KEY' #{scratch}/ssl/private_keys/#{target}.pem > /dev/null 2>&1"
+  else
+    on agent, "grep 'BEGIN RSA PRIVATE KEY' #{scratch}/ssl/private_keys/#{target}.pem > /dev/null 2>&1"
+  end
 end

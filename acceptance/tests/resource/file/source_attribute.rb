@@ -266,7 +266,7 @@ agents.each do |agent|
   create_remote_file agent, source, source_content
 
 
-  if (on(agent, facter("find in_fips_mode")).stdout =~ /true/)
+  if fips_host_present == 1
     apply_manifest_on agent, "file { '#{localsource_testdir}/targetsha256lite': source => '#{source}', ensure => present, checksum => sha256lite }" do
       assert_no_match(/(content changed|defined content)/, stdout, "Shouldn't have overwrote any files")
     end
