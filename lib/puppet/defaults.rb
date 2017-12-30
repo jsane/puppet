@@ -822,6 +822,14 @@ EOT
       :desc => "Where puppet agent stores the password for its private key.
         Generally unused."
     },
+    :enckeymaterialfile=> {
+      :default => "$privatedir/enckm.dat",
+      :type   => :file,
+      :mode => "0640",
+      :owner => "service",
+      :group => "service",
+      :desc => "Where puppet agent stores key materials used to secure any sensitive artifacts like cached catalog."
+    },
     :hostcsr => {
       :default => "$ssldir/csr_$certname.pem",
       :type   => :file,
