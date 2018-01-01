@@ -3,6 +3,13 @@ require 'puppet/util/platform'
 module Puppet::Util::Encrypt
 
 
+  # An enum simulation to enable providing some context to encrypt/decrypt routines
+  # so they can use different keys 
+  class Artifacts
+    CATALOG=1
+    TRANSACTIONSTORE=2
+  end
+
   # REMIND/TODO:
   # We might want to define a class and maintain the key material in class variables
   # That might avoid having to read it from file everytime after the initial generation
@@ -17,9 +24,19 @@ module Puppet::Util::Encrypt
   
     key_material = Hash.new
   
-    cipher = OpenSSL::Cipher.new('AES-256-CBC').encrypt
-    key_material['key'] = cipher.random_key
-    key_material['iv'] = cipher.random_iv
+    # In case encryption is disabled then set all keys and ivs to nil
+    if Puppet[:secure_artifacts] == true
+      cipher = OpenSSL::Cipher.new('AES-128-CBC').encrypt
+      key_material['catalog_key'] = cipher.random_key
+      key_material['catalog_iv'] = cipher.random_iv
+      key_material['transactstore_key'] = cipher.random_key
+      key_material['transactstore_iv'] = cipher.random_iv
+    else
+      key_material['catalog_key'] = nil
+      key_material['catalog_iv'] =  nil
+      key_material['transactstore_key'] =  nil
+      key_material['transactstore_iv'] =  nil
+    end
 
     # TODO:: Compute a hash checksum on the key material
   
@@ -63,46 +80,44 @@ module Puppet::Util::Encrypt
   # The parameter to_enc (bool) tells if it is for encryption or decryption
   # If for decryption, this will not attempt to generate a new key pair and 
   # insist on the key material to exist
+  # The artifact parameter tells which key to use as we use different keys
+  # since their life cycles are different.
   
-  def get_cipher(to_enc)
+  def get_cipher(to_enc, artifact)
     km_file = Puppet[:enckeymaterialfile]
     km = read_key_material(km_file, Puppet[:hostprivkey])
     if km.nil?
-      if to_enc
-        km = generate_key_material(km_file, Puppet[:hostprivkey])
-      else
-        return nil
-      end
+      km = to_enc == true ? generate_key_material(km_file, Puppet[:hostprivkey]) : nil
     end
   
-    cipher = OpenSSL::Cipher.new('AES-256-CBC')
+    cipher = OpenSSL::Cipher.new('AES-128-CBC')
     if (to_enc)
       cipher.encrypt
     else
       cipher.decrypt
     end
-    cipher.key = km['key']
-    cipher.iv = km['iv']
-  
+    if artifact == Artifacts::CATALOG
+      cipher.key = km['catalog_key']
+      cipher.iv = km['catalog_iv']
+    elsif  artifact == Artifacts::TRANSACTIONSTORE
+      cipher.key = km['transactstore_key']
+      cipher.iv = km['transactstore_key']
+     #REMIND - do we need to handle else case if artifact is neither
+    end
+ 
     cipher  
   end
 
   # Simple method to encrypt. 
   # Takes in data to be encrypted and returns encrypted string
   
-  def encrypt(to_encrypt)
+  def encrypt(to_encrypt, artifact)
 
     # TODO::
     # Whether to encrypt or not would be controlled by a configuration switch 
     # secure_artifacts
-    enc_cipher = get_cipher(true)
-
-    if enc_cipher
-      enc_data = enc_cipher.update(to_encrypt) + enc_cipher.final
-    else
-      enc_data = nil
-      # REMIND: We may need to throw an exception if we are unable to encrypt
-    end
+    enc_cipher = get_cipher(true, artifact)
+    enc_data = enc_cipher != nil ? enc_cipher.update(to_encrypt) + enc_cipher.final : to_encrypt
 
     enc_data
   end
@@ -110,7 +125,7 @@ module Puppet::Util::Encrypt
   # Simple method to decrypt. 
   # Takes in encrypted data string and returns decrypted string
   # 
-  def decrypt(to_decrypt)
+  def decrypt(to_decrypt, artifact)
 
     # TODO::
     # Whether to decrypt or not would be controlled by a configuration switch 
@@ -121,13 +136,8 @@ module Puppet::Util::Encrypt
     # It might be best left to the caller to do that checking since this method lacks
     # context 
 
-    dec_cipher = get_cipher(false)
-    if dec_cipher
-      plaintext = dec_cipher.update(to_decrypt) + dec_cipher.final
-    else
-      # REMIND: We may need to throw an exception if we are unable to decrypt
-      plaintext = nil
-    end
+    dec_cipher = get_cipher(false, artifact)
+    plaintext = dec_cipher != nil ? dec_cipher.update(to_decrypt) + dec_cipher.final : to_decrypt
 
     plaintext
   end
