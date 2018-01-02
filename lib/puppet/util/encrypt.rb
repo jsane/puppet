@@ -120,6 +120,14 @@ module Puppet::Util::Encrypt
     enc_data = enc_cipher != nil ? enc_cipher.update(to_encrypt) + enc_cipher.final : to_encrypt
 
     enc_data
+
+
+    # TODO:
+    # This is what we want to be able to handle (within the context of a given artifact)
+    # This might be called when encryption is enabled or disabled. 
+    # When disabled we want to remove the keys if they were still valid
+    # When enabled and if the keys do not exist then create them. 
+    # In either case if there has been a key transition then they need to be saved.
   end
 
   # Simple method to decrypt. 
@@ -127,14 +135,14 @@ module Puppet::Util::Encrypt
   # 
   def decrypt(to_decrypt, artifact)
 
-    # TODO::
-    # Whether to decrypt or not would be controlled by a configuration switch 
-    # secure_artifacts
-    # Need to handle the case where the relevant artifacts might be encrypted in file
-    # then encryption gets disabled. During decryption in such cases it needs to know
-    # the artifact is encrypted that should be decrypted and returned.
-    # It might be best left to the caller to do that checking since this method lacks
-    # context 
+    # TODO:
+    # This is what we want to be able to handle (within the context of a given artifact)
+    # This might be called when encryption is enabled or disabled. 
+    # When disabled we want to be able to decrypt previously encrypted content if the switch to 
+    # turn off encryption happened inbetween.  In such cases we need to remove the keys if they were still valid
+    # after we do the encryption.
+    # If there has been a key transition then they need to be saved.
+    # Needs to be seen if it might be best left to the caller to do that checking
 
     dec_cipher = get_cipher(false, artifact)
     plaintext = dec_cipher != nil ? dec_cipher.update(to_decrypt) + dec_cipher.final : to_decrypt
