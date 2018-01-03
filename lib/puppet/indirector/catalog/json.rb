@@ -30,7 +30,7 @@ class Puppet::Resource::Catalog::Json < Puppet::Indirector::JSON
     FileUtils.mkdir_p(File.dirname(filename))
 
     # Puppet::Util.replace_file(filename, 0660) {|f| f.print Puppet::Util::Encrypt.encrypt(to_json(request.instance).force_encoding(Encoding::BINARY))}
-    Puppet::Util.replace_file(filename, 0660) {|f| f.print encrypt(to_json(request.instance).force_encoding(Encoding::BINARY))}
+    Puppet::Util.replace_file(filename, 0660) {|f| f.print encrypt(to_json(request.instance).force_encoding(Encoding::BINARY), Artifacts::CATALOG)}
   rescue TypeError => detail
     Puppet.log_exception(detail, _("Could not save %{json} %{request}: %{detail}") % { json: self.name, request: request.key, detail: detail })
   end
@@ -40,11 +40,7 @@ class Puppet::Resource::Catalog::Json < Puppet::Indirector::JSON
     json = nil
 
     begin
-      json = decrypt(File.read(file))
-
-      # TODO:: How to specify binary encoding when attempting to read & decrypt above
-      # Below was the original implementation
-      # json = Puppet::FileSystem.read(file, :encoding => Encoding::BINARY)
+      json = decrypt(Puppet::FileSystem.read(file, :encoding => Encoding::BINARY), Artifacts::CATALOG)
     rescue Errno::ENOENT
       return nil
     rescue => detail
