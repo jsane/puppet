@@ -10,6 +10,19 @@ module Puppet::Util::Encrypt
     TRANSACTIONSTORE=2
   end
 
+  class CipherAndKeys
+    @cipher = nil
+    @key_material = nil
+
+    def self.cipher
+      @cipher
+    end
+
+    def self.key_material
+      @key_material
+    end
+  end
+
   # REMIND/TODO:
   # We might want to define a class and maintain the key material in class variables
   # That might avoid having to read it from file everytime after the initial generation
@@ -17,39 +30,38 @@ module Puppet::Util::Encrypt
   # This method generates key material for a symmetric cipher and then stores them 
   # Generates new key and IV used for encrypting any sensitive artifacts maintained
   # on agent
-  # Parameters: 
-  #  - km_file: file where to store the generated key and IV (secured using agent public key)
-  #  - pkey_file: path to private key file to public encrypt the key material
   def generate_key_material(km_file, pkey_file)
   
     key_material = Hash.new
   
-    # In case encryption is disabled then set all keys and ivs to nil
-    if Puppet[:secure_artifacts] == true
-      cipher = OpenSSL::Cipher.new('AES-128-CBC').encrypt
-      key_material['catalog_key'] = cipher.random_key
-      key_material['catalog_iv'] = cipher.random_iv
-      key_material['transactstore_key'] = cipher.random_key
-      key_material['transactstore_iv'] = cipher.random_iv
-    else
-      key_material['catalog_key'] = nil
-      key_material['catalog_iv'] =  nil
-      key_material['transactstore_key'] =  nil
-      key_material['transactstore_iv'] =  nil
-    end
+    # AES-GCM is not supported on all ruby versions...
+    cipher = OpenSSL::Cipher.new('AES-128-CBC').encrypt
+    key_material['catalog_key'] = cipher.random_key
+    key_material['catalog_iv'] = cipher.random_iv
+    key_material['catalog_encrypted'] = false
 
-    # TODO:: Compute a hash checksum on the key material
+    key_material['transactstore_key'] = cipher.random_key
+    key_material['transactstore_iv'] = cipher.random_iv
+    key_material['transactstore_encrypted'] = false
+
+    key_material['needs_to_be_persisted'] = true
+  end
+
   
-    # If/when decide to support AES GCM we would need to supply auth_data and store auth_tag. 
-    # It is not supported in all ruby versions
-    
+  # Method to securely persist key materials used to encrypt sensitive artifacts
+  # Parameters: 
+  #  - km: Key material hash (contains keys and status flags for various artifacts)
+  #  - km_file: file where to store the generated key and IV (secured using agent public key)
+  #  - pkey_file: path to private key file to public encrypt the key material
+  def save_key_material(km, km_file, pkey_file)
+
     rsa_key = OpenSSL::PKey::RSA.new File.read(pkey_file)
     
     File.open(km_file, 'w') do |file|
-      Marshal.dump(rsa_key.public_encrypt(Marshal.dump(key_material)), file)
+      Marshal.dump(rsa_key.public_encrypt(Marshal.dump(km)), file)
     end
   
-    key_material
+    true
   end
  
   # This method generates key material for a symmetric cipher and then stores them 
@@ -112,6 +124,7 @@ module Puppet::Util::Encrypt
   # Parameters: 
   #  - km_file: file where to read the generated key and IV from (secured using agent public key)
   #  - pkey_file: path to private key file to private decrypt the key material
+  # Returns the de-constructed key material as read from the file or nil if not found
   def read_key_material(km_file, pkey_file)
   
     if !File.exist?(km_file)
@@ -138,10 +151,18 @@ module Puppet::Util::Encrypt
   # since their life cycles are different.
   
   def get_cipher(to_enc, artifact)
-    km_file = Puppet[:enckeymaterialfile]
-    km = read_key_material(km_file, Puppet[:hostprivkey])
+    km = read_key_material(Puppet[:enckeymaterialfile], Puppet[:hostprivkey])
     if km.nil?
-      km = to_enc == true ? generate_key_material(km_file, Puppet[:hostprivkey]) : nil
+      # if Puppet[:secure_artifacts] == true
+        if to_enc
+          km = generate_key_material(km_file, Puppet[:hostprivkey])
+        else
+          # Let the caller deal with it instead of throwing any exception
+          # There may be cases where it is ok for keys to not exist during decryption
+          return nil
+      # else
+      #   return nil
+      # end
     end
   
     cipher = OpenSSL::Cipher.new('AES-128-CBC')
@@ -159,29 +180,59 @@ module Puppet::Util::Encrypt
      #REMIND - do we need to handle else case if artifact is neither
     end
  
-    cipher  
+    c_and_k = CipherAndKeys.new
+    c_and_k.cipher = cipher  
+    c_and_k.key_material = km  
+
+    c_and_k
   end
 
   # Simple method to encrypt. 
   # Takes in data to be encrypted and returns encrypted string
-  
   def encrypt(to_encrypt, artifact)
 
-    # TODO::
-    # Whether to encrypt or not would be controlled by a configuration switch 
-    # secure_artifacts
+    need_to_update = false
+
     enc_cipher = get_cipher(true, artifact)
-    enc_data = enc_cipher != nil ? enc_cipher.update(to_encrypt) + enc_cipher.final : to_encrypt
+
+    need_to_update = enc_cipher.key_material['needs_to_be_persisted']
+
+    if Puppet[:secure_artifacts]
+      if artifact == Artifacts::CATALOG
+        # Anytime there is a state transition - from an un-encrypted artifact to encrypted one or vice versa
+        # we want to update the state as it is persisted along with the keys
+        if enc_cipher.key_material['catalog_encrypted'] == false
+          enc_cipher.key_material['catalog_encrypted'] == true
+          need_to_update = need_to_update || true
+        end
+      else
+        if enc_cipher.key_material['transactstore_encrypted'] == false
+          enc_cipher.key_material['transactstore_encrypted'] == true
+          need_to_update = need_to_update || true
+        end
+      end 
+      enc_data = enc_cipher.cipher.update(to_encrypt) + enc_cipher.cipher.final
+    else
+      if artifact == Artifacts::CATALOG
+        if enc_cipher.key_material['catalog_encrypted'] == true
+          enc_cipher.key_material['catalog_encrypted'] == false
+          need_to_update =  need_to_update ||true
+        end
+      else
+        if enc_cipher.key_material['transactstore_encrypted'] == true
+          enc_cipher.key_material['transactstore_encrypted'] == false
+          need_to_update =  need_to_update ||true
+        end
+      end
+      enc_data = to_encrypt  # Pass thru - do not encrypt
+      enc_cipher = nil  # Encryption is turned off 
+    end
+
+    if need_to_update 
+      save_key_material(enc_cipher.key_material, Puppet[:enckeymaterialfile], Puppet[:hostprivkey])
+    end
 
     enc_data
-
-
-    # TODO:
-    # This is what we want to be able to handle (within the context of a given artifact)
-    # This might be called when encryption is enabled or disabled. 
-    # When disabled we want to remove the keys if they were still valid
-    # When enabled and if the keys do not exist then create them. 
-    # In either case if there has been a key transition then they need to be saved.
   end
 
   # Simple method to decrypt. 
@@ -189,17 +240,36 @@ module Puppet::Util::Encrypt
   # 
   def decrypt(to_decrypt, artifact)
 
-    # TODO:
     # This is what we want to be able to handle (within the context of a given artifact)
     # This might be called when encryption is enabled or disabled. 
     # When disabled we want to be able to decrypt previously encrypted content if the switch to 
-    # turn off encryption happened inbetween.  In such cases we need to remove the keys if they were still valid
-    # after we do the encryption.
-    # If there has been a key transition then they need to be saved.
-    # Needs to be seen if it might be best left to the caller to do that checking
+    # turn off encryption happened inbetween.
 
     dec_cipher = get_cipher(false, artifact)
-    plaintext = dec_cipher != nil ? dec_cipher.update(to_decrypt) + dec_cipher.final : to_decrypt
+
+    if Puppet[:secure_artifacts] && dec_cipher.nil?
+      # Cannot really proceed in this case and need to throw an exception
+    end
+
+    if dec_cipher != nil
+      # We base the decision to decrypt solely on the artifact_encrypted flag.
+      if artifact == Artifacts::CATALOG && dec_cipher.key_material['catalog_encrypted'] 
+        plaintext = dec_cipher.update(to_decrypt) + dec_cipher.final
+      elsif artifact == Artifacts::TRANSACTIONSTORE && dec_cipher.key_material['transactstore_encrypted'] 
+        plaintext = dec_cipher.update(to_decrypt) + dec_cipher.final
+      else
+        plaintext = to_decrypt
+      end
+    else
+      # Ok to not have keys if "secure_artifacts" have been turned off...
+      # We are taking a chance as there is minimal non-zero probability that
+      # the artifact could be actually encrypted requiring keys
+      if Puppet[:secure_artifacts] == false
+        plaintext = to_decrypt
+      end
+    end
+
+    # And we do not update key materials or state during decryption
 
     plaintext
   end
