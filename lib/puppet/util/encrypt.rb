@@ -51,7 +51,61 @@ module Puppet::Util::Encrypt
   
     key_material
   end
+ 
+  # This method generates key material for a symmetric cipher and then stores them 
+  # Generates new key and IV used for encrypting any sensitive artifacts maintained
+  # on agent
+  # Parameters: 
+  #  - km_file: file where to store the generated key and IV (secured using agent public key)
+  #  - pkey_file: path to private key file to public encrypt the key material
+  #  - artifact: keys for what like catalog, transaction store 
+  #  - delete: are the keys to be deleted or generated. 
+
+  def update_key_material(km_file, pkey_file, artifact, delete)
   
+    update_km_file = false
+
+    km = read_key_material(km_file, pkey_file)
+    if km == nil
+      km = Hash.new  # in the remote possibility this happens
+    end
+  
+    if artifact == Artifacts::CATALOG
+      if delete
+        update_km_file = km['catalog_key'] != nil
+        km['catalog_key'] = nil
+        km['catalog_iv'] = nil
+      else
+        update_km_file = km['catalog_key'] == nil
+        cipher = OpenSSL::Cipher.new('AES-128-CBC').encrypt
+        km['catalog_key'] = cipher.random_key
+        km['catalog_iv'] = cipher.random_iv
+      end
+    elsif artifact == Artifacts::TRANSACTIONSTORE
+      if delete
+        update_km_file = km['transactstore_key'] != nil
+        km['transactstore_key'] = nil
+        km['transactstore_iv'] = nil
+      else
+        update_km_file = km['transactstore_key'] == nil
+        cipher = OpenSSL::Cipher.new('AES-128-CBC').encrypt
+        km['transactstore_key'] = cipher.random_key
+        km['transactstore_iv'] = cipher.random_iv
+      end
+    end
+
+    # Update the key materials only when needed 
+    if update_km_file
+      rsa_key = OpenSSL::PKey::RSA.new File.read(pkey_file)
+      
+      File.open(km_file, 'w') do |file|
+        Marshal.dump(rsa_key.public_encrypt(Marshal.dump(key_material)), file)
+      end
+    end
+  
+    km
+  end
+
   # This method reads previously generated key material (key, IV) for a symmetric cipher
   # It would be used to decrypt previously encrypted sensitive artifacts maintained
   # on agent
