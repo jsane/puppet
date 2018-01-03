@@ -58,9 +58,9 @@ class Puppet::Transaction::Persistence
     result = nil
     Puppet::Util.benchmark(:debug, _("Loaded transaction store file")) do
       begin
-        raw_yaml = Marshal.load(decrypt(File.read(filename)))
-        result = Puppet::Util::Yaml.load(raw_yaml, false, true)
-        # result = Puppet::Util::Yaml.load_file(filename, false, true)
+        # raw_yaml = Marshal.load(decrypt(File.read(filename)))
+        # result = Puppet::Util::Yaml.load(raw_yaml, false, true)
+        result = Puppet::Util::Yaml.load_file(filename, false, true)
       rescue Puppet::Util::Yaml::YamlLoadError => detail
         Puppet.log_exception(detail, _("Transaction store file %{filename} is corrupt (%{detail}); replacing") % { filename: filename, detail: detail }, { :level => :warning })
 
@@ -86,7 +86,8 @@ class Puppet::Transaction::Persistence
   # Save data from internal class to persistence store on disk.
   def save
     puts 'Inside Puppet::Transaction::Persistence.save method'
-    encrypted_new_data = encrypt(Marshal.dump(@new_data))
-    Puppet::Util::Yaml.dump(@encrypted_new_data, Puppet[:transactionstorefile])
+    # encrypted_new_data = encrypt(Marshal.dump(@new_data))
+    # Puppet::Util::Yaml.dump(@encrypted_new_data, Puppet[:transactionstorefile])
+    Puppet::Util::Yaml.dump(@new_data, Puppet[:transactionstorefile])
   end
 end
