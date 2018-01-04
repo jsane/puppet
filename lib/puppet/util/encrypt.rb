@@ -31,7 +31,8 @@ module Puppet::Util::Encrypt
   # Generates new key and IV used for encrypting any sensitive artifacts maintained
   # on agent
   def generate_key_material(km_file, pkey_file)
-  
+
+    puts "Puppet::Util::Encrypt.generate_key_material invoked"
     key_material = Hash.new
   
     # AES-GCM is not supported on all ruby versions...
@@ -55,6 +56,8 @@ module Puppet::Util::Encrypt
   #  - pkey_file: path to private key file to public encrypt the key material
   def save_key_material(km, km_file, pkey_file)
 
+    puts "Puppet::Util::Encrypt.save_key_material invoked"
+
     rsa_key = OpenSSL::PKey::RSA.new File.read(pkey_file)
     
     File.open(km_file, 'w') do |file|
@@ -64,59 +67,6 @@ module Puppet::Util::Encrypt
     true
   end
  
-  # This method generates key material for a symmetric cipher and then stores them 
-  # Generates new key and IV used for encrypting any sensitive artifacts maintained
-  # on agent
-  # Parameters: 
-  #  - km_file: file where to store the generated key and IV (secured using agent public key)
-  #  - pkey_file: path to private key file to public encrypt the key material
-  #  - artifact: keys for what like catalog, transaction store 
-  #  - delete: are the keys to be deleted or generated. 
-
-  def update_key_material(km_file, pkey_file, artifact, delete)
-  
-    update_km_file = false
-
-    km = read_key_material(km_file, pkey_file)
-    if km == nil
-      km = Hash.new  # in the remote possibility this happens
-    end
-  
-    if artifact == Artifacts::CATALOG
-      if delete
-        update_km_file = km['catalog_key'] != nil
-        km['catalog_key'] = nil
-        km['catalog_iv'] = nil
-      else
-        update_km_file = km['catalog_key'] == nil
-        cipher = OpenSSL::Cipher.new('AES-128-CBC').encrypt
-        km['catalog_key'] = cipher.random_key
-        km['catalog_iv'] = cipher.random_iv
-      end
-    elsif artifact == Artifacts::TRANSACTIONSTORE
-      if delete
-        update_km_file = km['transactstore_key'] != nil
-        km['transactstore_key'] = nil
-        km['transactstore_iv'] = nil
-      else
-        update_km_file = km['transactstore_key'] == nil
-        cipher = OpenSSL::Cipher.new('AES-128-CBC').encrypt
-        km['transactstore_key'] = cipher.random_key
-        km['transactstore_iv'] = cipher.random_iv
-      end
-    end
-
-    # Update the key materials only when needed 
-    if update_km_file
-      rsa_key = OpenSSL::PKey::RSA.new File.read(pkey_file)
-      
-      File.open(km_file, 'w') do |file|
-        Marshal.dump(rsa_key.public_encrypt(Marshal.dump(key_material)), file)
-      end
-    end
-  
-    km
-  end
 
   # This method reads previously generated key material (key, IV) for a symmetric cipher
   # It would be used to decrypt previously encrypted sensitive artifacts maintained
@@ -127,6 +77,8 @@ module Puppet::Util::Encrypt
   # Returns the de-constructed key material as read from the file or nil if not found
   def read_key_material(km_file, pkey_file)
   
+    puts "Puppet::Util::Encrypt.read_key_material invoked"
+
     if !File.exist?(km_file)
       return nil
     end
@@ -151,18 +103,15 @@ module Puppet::Util::Encrypt
   # since their life cycles are different.
   
   def get_cipher(to_enc, artifact)
-    km = read_key_material(Puppet[:enckeymaterialfile], Puppet[:hostprivkey])
+
+    puts "Puppet::Util::Encrypt.get_cipher invoked"
+
+    km_file = Puppet[:enckeymaterialfile]
+    km = read_key_material(km_file, Puppet[:hostprivkey])
     if km.nil?
-      # if Puppet[:secure_artifacts] == true
-        if to_enc
-          km = generate_key_material(km_file, Puppet[:hostprivkey])
-        else
-          # Let the caller deal with it instead of throwing any exception
-          # There may be cases where it is ok for keys to not exist during decryption
-          return nil
-      # else
-      #   return nil
-      # end
+      # Let the caller deal with it instead of throwing any exception
+      # There may be cases where it is ok for keys to not exist during decryption
+      km = to_enc ? generate_key_material(km_file, Puppet[:hostprivkey]) : nil
     end
   
     cipher = OpenSSL::Cipher.new('AES-128-CBC')
@@ -180,10 +129,12 @@ module Puppet::Util::Encrypt
      #REMIND - do we need to handle else case if artifact is neither
     end
  
-    c_and_k = CipherAndKeys.new
-    c_and_k.cipher = cipher  
-    c_and_k.key_material = km  
+    # c_and_k = CipherAndKeys.new
+    c_and_k = Hash.new
+    c_and_k['cipher'] = cipher  
+    c_and_k['key_material'] = km  
 
+    puts "Puppet::Util::Encrypt.get_cipher exiting"
     c_and_k
   end
 
@@ -191,6 +142,7 @@ module Puppet::Util::Encrypt
   # Takes in data to be encrypted and returns encrypted string
   def encrypt(to_encrypt, artifact)
 
+    puts "Puppet::Util::Encrypt.encrypt invoked"
     need_to_update = false
 
     enc_cipher = get_cipher(true, artifact)
@@ -201,8 +153,8 @@ module Puppet::Util::Encrypt
       if artifact == Artifacts::CATALOG
         # Anytime there is a state transition - from an un-encrypted artifact to encrypted one or vice versa
         # we want to update the state as it is persisted along with the keys
-        if enc_cipher.key_material['catalog_encrypted'] == false
-          enc_cipher.key_material['catalog_encrypted'] == true
+        if enc_cipher['key_material']['catalog_encrypted'] == false
+          enc_cipher['key_material']['catalog_encrypted'] == true
           need_to_update = need_to_update || true
         end
       else
@@ -211,11 +163,11 @@ module Puppet::Util::Encrypt
           need_to_update = need_to_update || true
         end
       end 
-      enc_data = enc_cipher.cipher.update(to_encrypt) + enc_cipher.cipher.final
+      enc_data = enc_cipher['cipher'].update(to_encrypt) + enc_cipher['cipher'].final
     else
       if artifact == Artifacts::CATALOG
-        if enc_cipher.key_material['catalog_encrypted'] == true
-          enc_cipher.key_material['catalog_encrypted'] == false
+        if enc_cipher['key_material']['catalog_encrypted'] == true
+          enc_cipher['key_material']['catalog_encrypted'] == false
           need_to_update =  need_to_update ||true
         end
       else
@@ -229,7 +181,7 @@ module Puppet::Util::Encrypt
     end
 
     if need_to_update 
-      save_key_material(enc_cipher.key_material, Puppet[:enckeymaterialfile], Puppet[:hostprivkey])
+      save_key_material(enc_cipher['key_material'], Puppet[:enckeymaterialfile], Puppet[:hostprivkey])
     end
 
     enc_data
@@ -253,10 +205,10 @@ module Puppet::Util::Encrypt
 
     if dec_cipher != nil
       # We base the decision to decrypt solely on the artifact_encrypted flag.
-      if artifact == Artifacts::CATALOG && dec_cipher.key_material['catalog_encrypted'] 
-        plaintext = dec_cipher.update(to_decrypt) + dec_cipher.final
+      if artifact == Artifacts::CATALOG && dec_cipher['key_material']['catalog_encrypted'] 
+        plaintext = dec_cipher['cipher'].update(to_decrypt) + dec_cipher['cipher'].final
       elsif artifact == Artifacts::TRANSACTIONSTORE && dec_cipher.key_material['transactstore_encrypted'] 
-        plaintext = dec_cipher.update(to_decrypt) + dec_cipher.final
+        plaintext = dec_cipher['cipher'].update(to_decrypt) + dec_cipher['cipher'].final
       else
         plaintext = to_decrypt
       end
