@@ -2,25 +2,11 @@ require 'puppet/util/platform'
 
 module Puppet::Util::Encrypt
 
-
   # An enum simulation to enable providing some context to encrypt/decrypt routines
   # so they can use different keys 
   class Artifacts
     CATALOG=1
     TRANSACTIONSTORE=2
-  end
-
-  class CipherAndKeys
-    @cipher = nil
-    @key_material = nil
-
-    def self.cipher
-      @cipher
-    end
-
-    def self.key_material
-      @key_material
-    end
   end
 
   # REMIND/TODO:
@@ -45,7 +31,9 @@ module Puppet::Util::Encrypt
     key_material['transactstore_iv'] = cipher.random_iv
     key_material['transactstore_encrypted'] = false
 
-    key_material['needs_to_be_persisted'] = true
+    key_material['needs_to_be_persisted'] = false
+      
+    save_key_material(key_material, Puppet[:enckeymaterialfile], Puppet[:hostprivkey])
   end
 
   
@@ -63,8 +51,7 @@ module Puppet::Util::Encrypt
     File.open(km_file, 'w') do |file|
       Marshal.dump(rsa_key.public_encrypt(Marshal.dump(km)), file)
     end
-  
-    true
+    
   end
  
 
@@ -101,8 +88,8 @@ module Puppet::Util::Encrypt
   # insist on the key material to exist
   # The artifact parameter tells which key to use as we use different keys
   # since their life cycles are different.
-  
-  def get_cipher(to_enc, artifact)
+
+  def get_cipher_v2(to_enc, artifact)
 
     puts "Puppet::Util::Encrypt.get_cipher invoked"
 
@@ -125,17 +112,12 @@ module Puppet::Util::Encrypt
       cipher.iv = km['catalog_iv']
     elsif  artifact == Artifacts::TRANSACTIONSTORE
       cipher.key = km['transactstore_key']
-      cipher.iv = km['transactstore_key']
+      cipher.iv = km['transactstore_iv']
      #REMIND - do we need to handle else case if artifact is neither
     end
  
-    # c_and_k = CipherAndKeys.new
-    c_and_k = Hash.new
-    c_and_k['cipher'] = cipher  
-    c_and_k['key_material'] = km  
-
     puts "Puppet::Util::Encrypt.get_cipher exiting"
-    c_and_k
+    cipher
   end
 
   # Simple method to encrypt. 
@@ -145,10 +127,17 @@ module Puppet::Util::Encrypt
     puts "Puppet::Util::Encrypt.encrypt invoked"
     need_to_update = false
 
-    enc_cipher = get_cipher(true, artifact)
+    enc_cipher = get_cipher_v2(true, artifact)
 
-    need_to_update = enc_cipher.key_material['needs_to_be_persisted']
+    # need_to_update = enc_cipher.key_material['needs_to_be_persisted']
 
+    if Puppet[:secure_artifacts]
+      enc_data = enc_cipher.update(to_encrypt) + enc_cipher.final
+    else
+      enc_data = to_encrypt
+    end
+ 
+=begin
     if Puppet[:secure_artifacts]
       if artifact == Artifacts::CATALOG
         # Anytime there is a state transition - from an un-encrypted artifact to encrypted one or vice versa
@@ -179,10 +168,7 @@ module Puppet::Util::Encrypt
       enc_data = to_encrypt  # Pass thru - do not encrypt
       enc_cipher = nil  # Encryption is turned off 
     end
-
-    if need_to_update 
-      save_key_material(enc_cipher['key_material'], Puppet[:enckeymaterialfile], Puppet[:hostprivkey])
-    end
+=end
 
     enc_data
   end
@@ -197,7 +183,8 @@ module Puppet::Util::Encrypt
     # When disabled we want to be able to decrypt previously encrypted content if the switch to 
     # turn off encryption happened inbetween.
 
-    dec_cipher = get_cipher(false, artifact)
+    dec_cipher = get_cipher_v2(false, artifact)
+    km = read_key_material(Puppet[:enckeymaterialfile], Puppet[:hostprivkey])
 
     if Puppet[:secure_artifacts] && dec_cipher.nil?
       # Cannot really proceed in this case and need to throw an exception
@@ -205,10 +192,10 @@ module Puppet::Util::Encrypt
 
     if dec_cipher != nil
       # We base the decision to decrypt solely on the artifact_encrypted flag.
-      if artifact == Artifacts::CATALOG && dec_cipher['key_material']['catalog_encrypted'] 
-        plaintext = dec_cipher['cipher'].update(to_decrypt) + dec_cipher['cipher'].final
-      elsif artifact == Artifacts::TRANSACTIONSTORE && dec_cipher.key_material['transactstore_encrypted'] 
-        plaintext = dec_cipher['cipher'].update(to_decrypt) + dec_cipher['cipher'].final
+      if artifact == Artifacts::CATALOG
+        plaintext = dec_cipher.update(to_decrypt) + dec_cipher.final
+      elsif artifact == Artifacts::TRANSACTIONSTORE
+        plaintext = dec_cipher.update(to_decrypt) + dec_cipher.final
       else
         plaintext = to_decrypt
       end
