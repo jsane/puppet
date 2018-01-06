@@ -1727,13 +1727,13 @@ EOT
       dependencies set with the before/require/notify/subscribe metaparameters
       and the `->`/`~>` chaining arrows; this setting only affects the relative
       ordering of _unrelated_ resources."
-    }
+    },
     :secure_artifacts => {
       :default    => true,
       :type       => :boolean,
       :desc       => "Whether to encrypt any sensitive artifacts like cached catalog, transaction logs. Recommended to
         secure them. Can disable encryption for trouble shooting purposes."
-    },
+    }
   )
 
   # Plugin information.
