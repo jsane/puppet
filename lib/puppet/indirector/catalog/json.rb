@@ -1,9 +1,8 @@
 require 'puppet/resource/catalog'
 require 'puppet/indirector/json'
-require 'puppet/util/encrypt'
+require 'puppet/util/better_encrypt'
 
 class Puppet::Resource::Catalog::Json < Puppet::Indirector::JSON
-  Puppet::Util::Encrypt
   desc "Store catalogs as flat files, serialized using JSON."
 
   def from_json(text)
@@ -29,7 +28,7 @@ class Puppet::Resource::Catalog::Json < Puppet::Indirector::JSON
     filename = path(request.key)
     FileUtils.mkdir_p(File.dirname(filename))
 
-    Puppet::Util.replace_file(filename, 0660) {|f| f.print Puppet::Util::Encrypt.encrypt(to_json(request.instance).force_encoding(Encoding::BINARY), Puppet::Util::Encrypt::Artifacts::CATALOG)}
+    Puppet::Util.replace_file(filename, 0660) {|f| f.print Puppet::Util::Encrypt.encrypt(to_json(request.instance).force_encoding(Encoding::BINARY), Puppet::Util::Artifacts::CATALOG)}
   rescue TypeError => detail
     Puppet.log_exception(detail, _("Could not save %{json} %{request}: %{detail}") % { json: self.name, request: request.key, detail: detail })
   end
@@ -39,7 +38,7 @@ class Puppet::Resource::Catalog::Json < Puppet::Indirector::JSON
     json = nil
 
     begin
-      json = Puppet::Util::Encrypt.decrypt(Puppet::FileSystem.read(file, :encoding => Encoding::BINARY), Puppet::Util::Encrypt::Artifacts::CATALOG)
+      json = Puppet::Util::Encrypt.decrypt(Puppet::FileSystem.read(file, :encoding => Encoding::BINARY), Puppet::Util::Artifacts::CATALOG)
     rescue Errno::ENOENT
       return nil
     rescue => detail

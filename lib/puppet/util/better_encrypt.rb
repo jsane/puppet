@@ -2,16 +2,20 @@ require 'puppet/util/platform'
 
 # An enum simulation to enable providing some context to encrypt/decrypt routines
 # so they can use different keys 
-class Puppet::Util::Encrypt::Artifacts
+class Puppet::Util::Artifacts
   CATALOG=1
   TRANSACTIONSTORE=2
 end
 
 class Puppet::Util::Encrypt
 
+  def self.my_puts(str)
+    # puts(str)
+  end
+
   # Some class variables to maintain state
   # This maintains the key material to be used for encryption/decryption like key, IV
-  @@km = nil
+  @@km = Hash.new
   @@km_file = Puppet[:enckeymaterialfile]
   @@pkey_file = Puppet[:hostprivkey]
 
@@ -24,22 +28,22 @@ class Puppet::Util::Encrypt
   # on agent
   def self.generate_key_material()
 
-    puts "Puppet::Util::Encrypt.generate_key_material invoked"
+    my_puts "Puppet::Util::Encrypt.generate_key_material invoked"
     @@km = Hash.new
   
     # AES-GCM is not supported on all ruby versions...
     cipher = OpenSSL::Cipher.new('AES-128-CBC').encrypt
-    @@km['catalog_key'] = cipher.random_key
-    @@km['catalog_iv'] = cipher.random_iv
-    @@km['catalog_encrypted'] = false
+    @@km["catalog_key"] = cipher.random_key
+    @@km["catalog_iv"] = cipher.random_iv
+    @@km["catalog_encrypted"] = false
 
-    @@km['transactstore_key'] = cipher.random_key
-    @@km['transactstore_iv'] = cipher.random_iv
-    @@km['transactstore_encrypted'] = false
+    @@km["transactstore_key"] = cipher.random_key
+    @@km["transactstore_iv"] = cipher.random_iv
+    @@km["transactstore_encrypted"] = false
 
-    @@km['needs_to_be_persisted'] = true
+    @@km["needs_to_be_persisted"] = true
       
-    save_key_material()
+    # save_key_material()
   end
 
   
@@ -50,7 +54,7 @@ class Puppet::Util::Encrypt
   #  - pkey_file: path to private key file to public encrypt the key material
   def self.save_key_material()
 
-    puts "Puppet::Util::Encrypt.save_key_material invoked"
+    my_puts "Puppet::Util::Encrypt.save_key_material invoked"
 
     if @@km != nil
       rsa_key = OpenSSL::PKey::RSA.new File.read(@@pkey_file)
@@ -71,7 +75,7 @@ class Puppet::Util::Encrypt
   # Returns the de-constructed key material as read from the file or nil if not found
   def self.read_key_material()
   
-    puts "Puppet::Util::Encrypt.read_key_material invoked"
+    my_puts "Puppet::Util::Encrypt.read_key_material invoked"
 
     if !File.exist?(@@km_file)
       return nil
@@ -96,17 +100,18 @@ class Puppet::Util::Encrypt
   # since their life cycles are different.
   def self.get_cipher(to_enc, artifact)
 
-    puts "Puppet::Util::Encrypt.get_cipher invoked"
+    my_puts "Puppet::Util::Encrypt.get_cipher invoked"
 
     # Read key material is not already loaded...
-    if @@km.nil?
+    # if @@km == nil
+      my_puts "Puppet::Util::Encrypt.get_cipher after nil check"
       km = read_key_material()
       if km.nil?
         # Let the caller deal with it instead of throwing any exception
         # There may be cases where it is ok for keys to not exist during decryption
         km = to_enc ? generate_key_material() : nil
       end
-    end
+    # end
   
     cipher = OpenSSL::Cipher.new('AES-128-CBC')
     if (to_enc)
@@ -115,16 +120,17 @@ class Puppet::Util::Encrypt
       cipher.decrypt
     end
 
-    if artifact == Artifacts::CATALOG
-      cipher.key = km['catalog_key']
-      cipher.iv = km['catalog_iv']
-    elsif  artifact == Artifacts::TRANSACTIONSTORE
-      cipher.key = km['transactstore_key']
-      cipher.iv = km['transactstore_iv']
+    my_puts 'Before setting cipher keys'
+    if artifact == Puppet::Util::Artifacts::CATALOG
+      cipher.key = @@km["catalog_key"]
+      cipher.iv = @@km["catalog_iv"]
+    elsif  artifact == Puppet::Util::Artifacts::TRANSACTIONSTORE
+      cipher.key = km["transactstore_key"]
+      cipher.iv = km["transactstore_iv"]
      #REMIND - do we need to handle else case if artifact is neither
     end
  
-    puts "Puppet::Util::Encrypt.get_cipher exiting"
+    my_puts "Puppet::Util::Encrypt.get_cipher exiting"
     cipher
   end
 
@@ -132,42 +138,38 @@ class Puppet::Util::Encrypt
   # Takes in data to be encrypted and returns encrypted string
   def self.encrypt(to_encrypt, artifact)
 
-    puts "Puppet::Util::Encrypt.encrypt invoked"
+    my_puts "Puppet::Util::Encrypt.encrypt invoked"
     need_to_update = false
 
     enc_cipher = get_cipher(true, artifact)
 
-    need_to_update = @@km['needs_to_be_persisted']
+    # need_to_update = @@km['needs_to_be_persisted']
+    need_to_update = true
 
     if Puppet[:secure_artifacts]
-    else
-      enc_data = to_encrypt
-    end
- 
-    if Puppet[:secure_artifacts]
-      if artifact == Artifacts::CATALOG
+      if artifact == Puppet::Util::Artifacts::CATALOG
         # Anytime there is a state transition - from an un-encrypted artifact to encrypted one or vice versa
         # we want to update the state as it is persisted along with the keys
-        if @@km['catalog_encrypted'] == false
-          @@km['catalog_encrypted'] == true
+        if @@km["catalog_encrypted"] == false
+          @@km["catalog_encrypted"] == true
           need_to_update = need_to_update || true
         end
       else
-        if @@km['transactstore_encrypted'] == false
-          @@km['transactstore_encrypted'] == true
+        if @@km["transactstore_encrypted"] == false
+          @@km["transactstore_encrypted"] == true
           need_to_update = need_to_update || true
         end
       end 
-      enc_data = enc_cipher['cipher'].update(to_encrypt) + enc_cipher['cipher'].final
+      enc_data = enc_cipher.update(to_encrypt) + enc_cipher.final
     else
-      if artifact == Artifacts::CATALOG
-        if @@km['catalog_encrypted'] == true
-          @@km['catalog_encrypted'] == false
+      if artifact == Puppet::Util::Artifacts::CATALOG
+        if @@km["catalog_encrypted"] == true
+          @@km["catalog_encrypted"] == false
           need_to_update =  need_to_update || true
         end
       else
-        if @@km['transactstore_encrypted'] == true
-          @@km['transactstore_encrypted'] == false
+        if @@km["transactstore_encrypted"] == true
+          @@km["transactstore_encrypted"] == false
           need_to_update =  need_to_update || true
         end
       end
@@ -200,10 +202,10 @@ class Puppet::Util::Encrypt
 
     if dec_cipher != nil
       # We base the decision to decrypt solely on the artifact_encrypted flag.
-      if artifact == Artifacts::CATALOG
-        plaintext = @@km['catalog_encrypted'] ? dec_cipher.update(to_decrypt) + dec_cipher.final : to_decrypt
-      elsif artifact == Artifacts::TRANSACTIONSTORE
-        plaintext = @@km['transactstore_encrypted'] ? dec_cipher.update(to_decrypt) + dec_cipher.final
+      if artifact == Puppet::Util::Artifacts::CATALOG
+        plaintext = @@km["catalog_encrypted"] ? dec_cipher.update(to_decrypt) + dec_cipher.final : to_decrypt
+      elsif artifact == Puppet::Util::Artifacts::TRANSACTIONSTORE
+        plaintext = @@km["transactstore_encrypted"] ? dec_cipher.update(to_decrypt) + dec_cipher.final : to_decrypt
       else
         plaintext = to_decrypt  # We don't recognize why we have been called.
       end
