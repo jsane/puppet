@@ -46,6 +46,7 @@ class Puppet::Util::Encrypt
   def self.save_key_material()
 
     my_puts "Puppet::Util::Encrypt.save_key_material invoked"
+    puts "Puppet::Util::Encrypt.save_key_material invoked"
     if @@km_file == nil
        @@km_file =  Puppet[:enckeymaterialfile]
     end
@@ -74,6 +75,8 @@ class Puppet::Util::Encrypt
   def self.read_key_material()
   
     my_puts "Puppet::Util::Encrypt.read_key_material invoked"
+    puts "Puppet::Util::Encrypt.read_key_material invoked"
+
     if @@km_file == nil
        @@km_file =  Puppet[:enckeymaterialfile]
     end
@@ -153,6 +156,7 @@ class Puppet::Util::Encrypt
   def self.encrypt(to_encrypt, artifact)
 
     my_puts "Puppet::Util::Encrypt.encrypt invoked"
+    puts "Puppet::Util::Encrypt.encrypt invoked"
     need_to_update = false
 
     enc_cipher = get_cipher(true, artifact)
@@ -217,6 +221,7 @@ class Puppet::Util::Encrypt
     # turn off encryption happened inbetween.
     
     my_puts("decrypt invoked")
+    puts(" Puppet::Util::Encrypt.decrypt invoked")
 
     dec_cipher = get_cipher(false, artifact)
 
