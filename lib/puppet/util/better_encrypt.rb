@@ -15,17 +15,13 @@ class Puppet::Util::Encrypt
 
   # Some class variables to maintain state
   # This maintains the key material to be used for encryption/decryption like key, IV
-  @@km = Hash.new
-  @@km_file = Puppet[:enckeymaterialfile]
-  @@pkey_file = Puppet[:hostprivkey]
+  # to avoid having to read it from file everytime after the initial generation
+  @@km = nil
+  @@km_file = nil
+  @@pkey_file = nil
 
-  # REMIND/TODO:
-  # We might want to define a class and maintain the key material in class variables
-  # That might avoid having to read it from file everytime after the initial generation
-
-  # This method generates key material for a symmetric cipher and then stores them 
-  # Generates new key and IV used for encrypting any sensitive artifacts maintained
-  # on agent
+  # This method generates key material (key, IV) for a symmetric cipher
+  # used for encrypting any sensitive artifacts maintained on agent
   def self.generate_key_material()
 
     my_puts "Puppet::Util::Encrypt.generate_key_material invoked"
@@ -43,22 +39,27 @@ class Puppet::Util::Encrypt
 
     @@km["needs_to_be_persisted"] = true
       
-    # save_key_material()
   end
 
   
   # Method to securely persist key materials used to encrypt sensitive artifacts
-  # Parameters: 
-  #  - km: Key material hash (contains keys and status flags for various artifacts)
-  #  - km_file: file where to store the generated key and IV (secured using agent public key)
-  #  - pkey_file: path to private key file to public encrypt the key material
   def self.save_key_material()
 
     my_puts "Puppet::Util::Encrypt.save_key_material invoked"
+    if @@km_file == nil
+       @@km_file =  Puppet[:enckeymaterialfile]
+    end
+
+    if @@pkey_file == nil
+       @@pkey_file =  Puppet[:hostprivkey]
+    end
 
     if @@km != nil
       rsa_key = OpenSSL::PKey::RSA.new File.read(@@pkey_file)
       
+      my_puts("save_key_material: dumping out key material")
+      my_puts(@@km)
+
       File.open(@@km_file, 'w') do |file|
         Marshal.dump(rsa_key.public_encrypt(Marshal.dump(@@km)), file)
       end
@@ -69,15 +70,20 @@ class Puppet::Util::Encrypt
   # This method reads previously generated key material (key, IV) for a symmetric cipher
   # It would be used to decrypt previously encrypted sensitive artifacts maintained
   # on agent
-  # Parameters: 
-  #  - km_file: file where to read the generated key and IV from (secured using agent public key)
-  #  - pkey_file: path to private key file to private decrypt the key material
   # Returns the de-constructed key material as read from the file or nil if not found
   def self.read_key_material()
   
     my_puts "Puppet::Util::Encrypt.read_key_material invoked"
+    if @@km_file == nil
+       @@km_file =  Puppet[:enckeymaterialfile]
+    end
+
+    if @@pkey_file == nil
+       @@pkey_file =  Puppet[:hostprivkey]
+    end
 
     if !File.exist?(@@km_file)
+      my_puts("read_key_material: file does not exist")
       return nil
     end
   
@@ -86,6 +92,8 @@ class Puppet::Util::Encrypt
       rsa_key = OpenSSL::PKey::RSA.new File.read(@@pkey_file)
       dec_km = rsa_key.private_decrypt(enc_km)
       @@km = Marshal.load(dec_km)
+      my_puts("read_key_material: Loaded key material from file...")
+      my_puts(@@km)
     end
     
     @@km
@@ -102,16 +110,22 @@ class Puppet::Util::Encrypt
 
     my_puts "Puppet::Util::Encrypt.get_cipher invoked"
 
-    # Read key material is not already loaded...
+    # Read key material if not already loaded...
     # if @@km == nil
       my_puts "Puppet::Util::Encrypt.get_cipher after nil check"
       km = read_key_material()
+      # my_puts("get_cipher - km value: " + km == nil ? "nil" : "valid")
       if km.nil?
         # Let the caller deal with it instead of throwing any exception
         # There may be cases where it is ok for keys to not exist during decryption
         km = to_enc ? generate_key_material() : nil
+        # my_puts("To encrypt value: " + to_enc.to_s + " km value: " + km == nil ? "nil" : "valid")
+      else
+        my_puts("get_cipher: Found key material...")
       end
     # end
+
+    return nil if km.nil?
   
     cipher = OpenSSL::Cipher.new('AES-128-CBC')
     if (to_enc)
@@ -125,8 +139,8 @@ class Puppet::Util::Encrypt
       cipher.key = @@km["catalog_key"]
       cipher.iv = @@km["catalog_iv"]
     elsif  artifact == Puppet::Util::Artifacts::TRANSACTIONSTORE
-      cipher.key = km["transactstore_key"]
-      cipher.iv = km["transactstore_iv"]
+      cipher.key = @@km["transactstore_key"]
+      cipher.iv = @@km["transactstore_iv"]
      #REMIND - do we need to handle else case if artifact is neither
     end
  
@@ -143,20 +157,28 @@ class Puppet::Util::Encrypt
 
     enc_cipher = get_cipher(true, artifact)
 
-    # need_to_update = @@km['needs_to_be_persisted']
-    need_to_update = true
+    # REMIND/TODO:
+    # If secure_artifacts is set to true but we don't have an cipher object from above
+    # then that is an error condition and should cause an exception
 
-    if Puppet[:secure_artifacts]
+    if @@km != nil
+      need_to_update = @@km["needs_to_be_persisted"]
+    else
+      need_to_update = true   # Just update the km on disk to be safe
+    end
+
+    if Puppet[:secure_artifacts] && enc_cipher
       if artifact == Puppet::Util::Artifacts::CATALOG
         # Anytime there is a state transition - from an un-encrypted artifact to encrypted one or vice versa
         # we want to update the state as it is persisted along with the keys
         if @@km["catalog_encrypted"] == false
-          @@km["catalog_encrypted"] == true
+          @@km["catalog_encrypted"] = true
           need_to_update = need_to_update || true
+          my_puts("Secure_artifacts enabled. Marking the catalog as being encrypted. Flagging for saving km")
         end
-      else
+      elsif artifact == Puppet::Util::Artifacts::TRANSACTIONSTORE
         if @@km["transactstore_encrypted"] == false
-          @@km["transactstore_encrypted"] == true
+          @@km["transactstore_encrypted"] = true
           need_to_update = need_to_update || true
         end
       end 
@@ -164,12 +186,12 @@ class Puppet::Util::Encrypt
     else
       if artifact == Puppet::Util::Artifacts::CATALOG
         if @@km["catalog_encrypted"] == true
-          @@km["catalog_encrypted"] == false
+          @@km["catalog_encrypted"] = false
           need_to_update =  need_to_update || true
         end
-      else
+      elsif artifact == Puppet::Util::Artifacts::TRANSACTIONSTORE
         if @@km["transactstore_encrypted"] == true
-          @@km["transactstore_encrypted"] == false
+          @@km["transactstore_encrypted"] = false
           need_to_update =  need_to_update || true
         end
       end
@@ -193,16 +215,22 @@ class Puppet::Util::Encrypt
     # This might be called when encryption is enabled or disabled. 
     # When disabled we want to be able to decrypt previously encrypted content if the switch to 
     # turn off encryption happened inbetween.
+    
+    my_puts("decrypt invoked")
 
     dec_cipher = get_cipher(false, artifact)
 
     if Puppet[:secure_artifacts] && dec_cipher.nil?
       # Cannot really proceed in this case and need to throw an exception
+      my_puts("Secure_artifacts is enabled but could not create cipher!!!")
+     
+      return to_decrypt
     end
 
     if dec_cipher != nil
       # We base the decision to decrypt solely on the artifact_encrypted flag.
       if artifact == Puppet::Util::Artifacts::CATALOG
+        my_puts("Inside decrypt: value of @@km[catalog_encrypted]: " + @@km["catalog_encrypted"].to_s)
         plaintext = @@km["catalog_encrypted"] ? dec_cipher.update(to_decrypt) + dec_cipher.final : to_decrypt
       elsif artifact == Puppet::Util::Artifacts::TRANSACTIONSTORE
         plaintext = @@km["transactstore_encrypted"] ? dec_cipher.update(to_decrypt) + dec_cipher.final : to_decrypt
