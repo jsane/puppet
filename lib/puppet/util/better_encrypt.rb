@@ -155,6 +155,11 @@ class Puppet::Util::Encrypt
   # Takes in data to be encrypted and returns encrypted string
   def self.encrypt(to_encrypt, artifact)
 
+   # If we do not have agent key in place yet do not bother
+   if !File.exist?(@@pkey_file)
+     return to_encrypt
+   end
+
     my_puts "Puppet::Util::Encrypt.encrypt invoked"
     puts "Puppet::Util::Encrypt.encrypt invoked"
     need_to_update = false
@@ -214,6 +219,11 @@ class Puppet::Util::Encrypt
   # Takes in encrypted data string and returns decrypted string
   # 
   def self.decrypt(to_decrypt, artifact)
+
+   # If we do not have agent key in place yet do not bother
+   if !File.exist?(@@pkey_file)
+     return to_encrypt
+   end
 
     # This is what we want to be able to handle (within the context of a given artifact)
     # This might be called when encryption is enabled or disabled. 
