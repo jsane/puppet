@@ -107,7 +107,7 @@ class Puppet::Transaction::Persistence
     encrypted_new_data = Puppet::Util::Encrypt.encrypt(marshaled_new_data, Puppet::Util::Artifacts::TRANSACTIONSTORE)
     puts encrypted_new_data == nil ? "Got nil after encrypt" : "Valid content after encrypt"
     
-    Puppet::Util::Yaml.dump(@encrypted_new_data, Puppet[:transactionstorefile])
+    Puppet::Util::Yaml.dump(encrypted_new_data, Puppet[:transactionstorefile])
     # Puppet::Util::Yaml.dump(@new_data, Puppet[:transactionstorefile])
   end
 
