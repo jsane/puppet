@@ -222,7 +222,7 @@ class Puppet::Util::Encrypt
 
    # If we do not have agent key in place yet do not bother
    if !File.exist?(@@pkey_file)
-     return to_encrypt
+     return to_decrypt
    end
 
     # This is what we want to be able to handle (within the context of a given artifact)
