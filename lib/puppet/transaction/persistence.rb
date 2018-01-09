@@ -57,8 +57,15 @@ class Puppet::Transaction::Persistence
     result = nil
     Puppet::Util.benchmark(:debug, _("Loaded transaction store file")) do
       begin
-        raw_yaml = Marshal.load(Puppet::Util::Encrypt.decrypt(File.read(filename), Puppet::Util::Artifacts::TRANSACTIONSTORE))
+        dec_file_cont = Puppet::Util::Encrypt.decrypt(File.read(filename), Puppet::Util::Artifacts::TRANSACTIONSTORE)
+        puts dec_file_cont == nil ? "Got nil after decryption" : "Valid content after decryption"
+        raw_yaml = Marshal.load(dec_file_cont)
+        
+        puts raw_yaml == nil ? "Got nil after Marshal load" : "Valid content after Marshal load"
+        
         result = Puppet::Util::Yaml.load(raw_yaml, false, true)
+        puts result == nil ? "Got nil after Yaml load" : "Valid content after Yaml load"
+
         # result = Puppet::Util::Yaml.load_file(filename, false, true)
       rescue Puppet::Util::Yaml::YamlLoadError => detail
         Puppet.log_exception(detail, _("Transaction store file %{filename} is corrupt (%{detail}); replacing") % { filename: filename, detail: detail }, { :level => :warning })
