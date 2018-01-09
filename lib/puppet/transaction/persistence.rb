@@ -100,7 +100,13 @@ class Puppet::Transaction::Persistence
   # Save data from internal class to persistence store on disk.
   def save
     puts 'Inside Puppet::Transaction::Persistence.save method'
-    encrypted_new_data = Puppet::Util::Encrypt.encrypt(Marshal.dump(@new_data), Puppet::Util::Artifacts::TRANSACTIONSTORE)
+
+    marshaled_new_data = Marshal.dump(@new_data)
+    puts marshaled_new_data == nil ? "Got nil after marshal dump" : "Valid content after marshal dump"
+
+    encrypted_new_data = Puppet::Util::Encrypt.encrypt(marshaled_new_data, Puppet::Util::Artifacts::TRANSACTIONSTORE)
+    puts encrypted_new_data == nil ? "Got nil after encrypt" : "Valid content after encrypt"
+    
     Puppet::Util::Yaml.dump(@encrypted_new_data, Puppet[:transactionstorefile])
     # Puppet::Util::Yaml.dump(@new_data, Puppet[:transactionstorefile])
   end
