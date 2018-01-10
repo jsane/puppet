@@ -101,8 +101,12 @@ class Puppet::Transaction::Persistence
   def save
     puts 'Inside Puppet::Transaction::Persistence.save method'
 
+    puts @new_data
+
     marshaled_new_data = Marshal.dump(@new_data)
     puts marshaled_new_data == nil ? "Got nil after marshal dump" : "Valid content after marshal dump"
+
+    puts marshaled_new_data 
 
     encrypted_new_data = Puppet::Util::Encrypt.encrypt(marshaled_new_data, Puppet::Util::Artifacts::TRANSACTIONSTORE)
     puts encrypted_new_data == nil ? "Got nil after encrypt" : "Valid content after encrypt"
