@@ -48,11 +48,11 @@ class Puppet::Util::Encrypt
     my_puts "Puppet::Util::Encrypt.save_key_material invoked"
     puts "Puppet::Util::Encrypt.save_key_material invoked"
     if @@km_file == nil
-       @@km_file =  Puppet[:enckeymaterialfile]
+       @@km_file = Puppet[:enckeymaterialfile]
     end
 
     if @@pkey_file == nil
-       @@pkey_file =  Puppet[:hostprivkey]
+       @@pkey_file = Puppet[:hostprivkey]
     end
 
     if @@km != nil
@@ -78,11 +78,11 @@ class Puppet::Util::Encrypt
     puts "Puppet::Util::Encrypt.read_key_material invoked"
 
     if @@km_file == nil
-       @@km_file =  Puppet[:enckeymaterialfile]
+       @@km_file = Puppet[:enckeymaterialfile]
     end
 
     if @@pkey_file == nil
-       @@pkey_file =  Puppet[:hostprivkey]
+       @@pkey_file = Puppet[:hostprivkey]
     end
 
     if !File.exist?(@@km_file)
@@ -155,10 +155,15 @@ class Puppet::Util::Encrypt
   # Takes in data to be encrypted and returns encrypted string
   def self.encrypt(to_encrypt, artifact)
 
-   # If we do not have agent key in place yet do not bother
-   if !File.exist?(@@pkey_file)
-     return to_encrypt
-   end
+    if @@pkey_file == nil
+       #else we fail spectacularly below..
+       @@pkey_file = Puppet[:hostprivkey]
+    end
+
+    # If we do not have agent key in place yet do not bother
+    if !File.exist?(@@pkey_file)
+      return to_encrypt
+    end
 
     my_puts "Puppet::Util::Encrypt.encrypt invoked"
     puts "Puppet::Util::Encrypt.encrypt invoked"
@@ -220,10 +225,15 @@ class Puppet::Util::Encrypt
   # 
   def self.decrypt(to_decrypt, artifact)
 
-   # If we do not have agent key in place yet do not bother
-   if !File.exist?(@@pkey_file)
-     return to_decrypt
-   end
+    if @@pkey_file == nil
+       #else we fail spectacularly below..
+       @@pkey_file = Puppet[:hostprivkey]
+    end
+
+    # If we do not have agent key in place yet do not bother
+    if !File.exist?(@@pkey_file)
+      return to_decrypt
+    end
 
     # This is what we want to be able to handle (within the context of a given artifact)
     # This might be called when encryption is enabled or disabled. 

@@ -98,7 +98,7 @@ class Puppet::Transaction::Persistence
     marshaled_new_data = Marshal.dump(@new_data)
     puts marshaled_new_data == nil ? "Got nil after marshal dump" : "Valid content after marshal dump"
 
-    puts marshaled_new_data 
+    # puts marshaled_new_data 
 
     encrypted_new_data = Puppet::Util::Encrypt.encrypt(marshaled_new_data, Puppet::Util::Artifacts::TRANSACTIONSTORE)
     puts encrypted_new_data == nil ? "Got nil after encrypt" : "Valid content after encrypt"
