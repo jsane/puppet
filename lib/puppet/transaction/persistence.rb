@@ -57,11 +57,8 @@ class Puppet::Transaction::Persistence
     result = nil
     Puppet::Util.benchmark(:debug, _("Loaded transaction store file")) do
       begin
-        dec_file_cont = Puppet::Util::Encrypt.decrypt(File.read(filename), Puppet::Util::Artifacts::TRANSACTIONSTORE)
-        puts dec_file_cont == nil ? "Got nil after decryption" : "Valid content after decryption"
-        raw_yaml = Marshal.load(dec_file_cont)
-        
-        puts raw_yaml == nil ? "Got nil after Marshal load" : "Valid content after Marshal load"
+        raw_yaml = Puppet::Util::Encrypt.decrypt(File.read(filename), Puppet::Util::Artifacts::TRANSACTIONSTORE)
+        puts raw_yaml == nil ? "Got nil after decryption" : "Valid content after decryption"
         
         result = Puppet::Util::Yaml.load(raw_yaml, false, true)
         puts result == nil ? "Got nil after Yaml load" : "Valid content after Yaml load"
@@ -93,14 +90,7 @@ class Puppet::Transaction::Persistence
   def save
     puts 'Inside Puppet::Transaction::Persistence.save method'
 
-    puts @new_data
-
-    marshaled_new_data = Marshal.dump(@new_data)
-    puts marshaled_new_data == nil ? "Got nil after marshal dump" : "Valid content after marshal dump"
-
-    # puts marshaled_new_data 
-
-    encrypted_new_data = Puppet::Util::Encrypt.encrypt(marshaled_new_data, Puppet::Util::Artifacts::TRANSACTIONSTORE)
+    encrypted_new_data = Puppet::Util::Encrypt.encrypt(@new_data, Puppet::Util::Artifacts::TRANSACTIONSTORE)
     puts encrypted_new_data == nil ? "Got nil after encrypt" : "Valid content after encrypt"
     
     Puppet::Util::Yaml.dump(encrypted_new_data, Puppet[:transactionstorefile])
