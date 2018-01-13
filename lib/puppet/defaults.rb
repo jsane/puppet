@@ -1,6 +1,7 @@
 require 'puppet/util/fips'
 
 module Puppet
+  include Puppet::Util::FIPS
 
   def self.default_diffargs
     if (Facter.value(:kernel) == "AIX" && Facter.value(:kernelmajversion) == "5300")
