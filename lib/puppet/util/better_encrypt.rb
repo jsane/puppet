@@ -196,7 +196,7 @@ class Puppet::Util::Encrypt
           need_to_update = need_to_update || true
         end
       end 
-      enc_data = enc_cipher.update(to_encrypt) + enc_cipher.final
+      enc_data = enc_cipher.update(Marshal.dump(to_encrypt)) + enc_cipher.final
     else
       if artifact == Puppet::Util::Artifacts::CATALOG
         if @@km["catalog_encrypted"] == true
@@ -256,9 +256,9 @@ class Puppet::Util::Encrypt
       # We base the decision to decrypt solely on the artifact_encrypted flag.
       if artifact == Puppet::Util::Artifacts::CATALOG
         my_puts("Inside decrypt: value of @@km[catalog_encrypted]: " + @@km["catalog_encrypted"].to_s)
-        plaintext = @@km["catalog_encrypted"] ? dec_cipher.update(to_decrypt) + dec_cipher.final : to_decrypt
+        plaintext = @@km["catalog_encrypted"] ? Marshal.load(dec_cipher.update(to_decrypt) + dec_cipher.final) : to_decrypt
       elsif artifact == Puppet::Util::Artifacts::TRANSACTIONSTORE
-        plaintext = @@km["transactstore_encrypted"] ? dec_cipher.update(to_decrypt) + dec_cipher.final : to_decrypt
+        plaintext = @@km["transactstore_encrypted"] ? Marshal.load(dec_cipher.update(to_decrypt) + dec_cipher.final) : to_decrypt
       else
         plaintext = to_decrypt  # We don't recognize why we have been called.
       end
