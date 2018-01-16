@@ -65,6 +65,7 @@ class Puppet::Transaction::Persistence
     result = nil
     Puppet::Util.benchmark(:debug, _("Loaded transaction store file in %{seconds} seconds")) do
       begin
+=begin
         dec_file_cont = Puppet::Util::Encrypt.decrypt(File.read(filename), Puppet::Util::Artifacts::TRANSACTIONSTORE)
         puts dec_file_cont == nil ? "Got nil after decryption" : "Valid content after decryption"
         raw_yaml = Marshal.load(dec_file_cont)
@@ -73,8 +74,9 @@ class Puppet::Transaction::Persistence
         
         result = Puppet::Util::Yaml.load(raw_yaml, false, true)
         puts result == nil ? "Got nil after Yaml load" : "Valid content after Yaml load"
+=end
 
-        # result = Puppet::Util::Yaml.load_file(filename, false, true)
+        result = Puppet::Util::Yaml.load_file(filename, false, true)
       rescue Puppet::Util::Yaml::YamlLoadError => detail
         Puppet.log_exception(detail, _("Transaction store file %{filename} is corrupt (%{detail}); replacing") % { filename: filename, detail: detail }, { :level => :warning })
 
@@ -99,6 +101,7 @@ class Puppet::Transaction::Persistence
 
   # Save data from internal class to persistence store on disk.
   def save
+=begin
     puts 'Inside Puppet::Transaction::Persistence.save method'
 
     puts @new_data
@@ -112,7 +115,8 @@ class Puppet::Transaction::Persistence
     puts encrypted_new_data == nil ? "Got nil after encrypt" : "Valid content after encrypt"
     
     Puppet::Util::Yaml.dump(encrypted_new_data, Puppet[:transactionstorefile])
-    # Puppet::Util::Yaml.dump(@new_data, Puppet[:transactionstorefile])
+=end
+    Puppet::Util::Yaml.dump(@new_data, Puppet[:transactionstorefile])
   end
 
   # Use the catalog and run_mode to determine if persistence should be enabled or not
