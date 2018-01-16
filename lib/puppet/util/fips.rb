@@ -5,7 +5,7 @@ require 'puppet/util/platform'
 module Puppet::Util::FIPS
   include Puppet::Util::Platform
 
-  def fips_enabled?
+  def self.fips_enabled?
     # We currently only plan to support FIPS on RHEL7
     # so we try to eliminate anything un-supported using
     # what we have available in lieu of not being able to specifically
@@ -20,7 +20,7 @@ module Puppet::Util::FIPS
   
     fips_status_file = '/proc/sys/crypto/fips_enabled'
   
-    if File.exist?(fips_status_file) && File.open(status_file, &:readline)[0].chr == '1'
+    if File.exist?(fips_status_file) && File.open(fips_status_file, &:readline)[0].chr == '1'
       true
     else
       false
