@@ -10,7 +10,7 @@ end
 class Puppet::Util::Encrypt
 
   def self.my_puts(str)
-    # puts(str)
+    puts(str)
   end
 
   # Some class variables to maintain state
@@ -166,7 +166,6 @@ class Puppet::Util::Encrypt
     end
 
     my_puts "Puppet::Util::Encrypt.encrypt invoked"
-    puts "Puppet::Util::Encrypt.encrypt invoked"
     need_to_update = false
 
     enc_cipher = get_cipher(true, artifact)
@@ -194,6 +193,7 @@ class Puppet::Util::Encrypt
         if @@km["transactstore_encrypted"] == false
           @@km["transactstore_encrypted"] = true
           need_to_update = need_to_update || true
+          my_puts("Secure_artifacts enabled. Marking the transactionstore as being encrypted. Flagging for saving km")
         end
       end 
       enc_data = enc_cipher.update(Marshal.dump(to_encrypt)) + enc_cipher.final
@@ -211,6 +211,7 @@ class Puppet::Util::Encrypt
       end
       enc_data = to_encrypt  # Pass thru - do not encrypt
       enc_cipher = nil  # Encryption is turned off 
+      my_puts("Pass thru - not encrypting...")
     end
 
     if need_to_update
@@ -224,6 +225,8 @@ class Puppet::Util::Encrypt
   # Takes in encrypted data string and returns decrypted string
   # 
   def self.decrypt(to_decrypt, artifact)
+
+    my_puts("Puppet::Util::Encrypt.decrypt invoked")
 
     if @@pkey_file == nil
        #else we fail spectacularly below..
@@ -240,8 +243,6 @@ class Puppet::Util::Encrypt
     # When disabled we want to be able to decrypt previously encrypted content if the switch to 
     # turn off encryption happened inbetween.
     
-    my_puts("decrypt invoked")
-    puts(" Puppet::Util::Encrypt.decrypt invoked")
 
     dec_cipher = get_cipher(false, artifact)
 
@@ -256,9 +257,21 @@ class Puppet::Util::Encrypt
       # We base the decision to decrypt solely on the artifact_encrypted flag.
       if artifact == Puppet::Util::Artifacts::CATALOG
         my_puts("Inside decrypt: value of @@km[catalog_encrypted]: " + @@km["catalog_encrypted"].to_s)
-        plaintext = @@km["catalog_encrypted"] ? Marshal.load(dec_cipher.update(to_decrypt) + dec_cipher.final) : to_decrypt
+        if @@km["catalog_encrypted"] 
+          plaintext = Marshal.load(dec_cipher.update(to_decrypt) + dec_cipher.final)
+          my_puts("Decrypted catalog contents...") 
+        else
+          plaintext = to_decrypt
+        end
+        # plaintext = @@km["catalog_encrypted"] ? Marshal.load(dec_cipher.update(to_decrypt) + dec_cipher.final) : to_decrypt
       elsif artifact == Puppet::Util::Artifacts::TRANSACTIONSTORE
-        plaintext = @@km["transactstore_encrypted"] ? Marshal.load(dec_cipher.update(to_decrypt) + dec_cipher.final) : to_decrypt
+        if @@km["transactstore_encrypted"] 
+          plaintext = Marshal.load(dec_cipher.update(to_decrypt) + dec_cipher.final)
+          my_puts("Decrypted transactionstore contents...") 
+        else
+          plaintext = to_decrypt
+        end
+        # plaintext = @@km["transactstore_encrypted"] ? Marshal.load(dec_cipher.update(to_decrypt) + dec_cipher.final) : to_decrypt
       else
         plaintext = to_decrypt  # We don't recognize why we have been called.
       end
@@ -268,6 +281,7 @@ class Puppet::Util::Encrypt
       # the artifact could be actually encrypted requiring keys
       if Puppet[:secure_artifacts] == false
         plaintext = to_decrypt
+        my_puts("Secure artifacts is set to false.")
       end
     end
 

@@ -65,8 +65,15 @@ class Puppet::Transaction::Persistence
     result = nil
     Puppet::Util.benchmark(:debug, _("Loaded transaction store file in %{seconds} seconds")) do
       begin
-        dec_file_cont = Puppet::Util::Encrypt.decrypt(File.read(filename), Puppet::Util::Artifacts::TRANSACTIONSTORE)
+        yaml = YAML.load_file(filename)
+        dec_file_cont = Puppet::Util::Encrypt.decrypt(yaml, Puppet::Util::Artifacts::TRANSACTIONSTORE)
         result = Puppet::Util::Yaml.load(dec_file_cont, false, true)
+       
+        if result.is_a?(Hash)
+          result.each do |key, value|
+            puts key.to_s + " : " + value.to_s
+          end
+        end
 
         # result = Puppet::Util::Yaml.load_file(filename, false, true)
       rescue Puppet::Util::Yaml::YamlLoadError => detail
@@ -96,6 +103,17 @@ class Puppet::Transaction::Persistence
     puts 'Inside Puppet::Transaction::Persistence.save method'
 
     encrypted_new_data = Puppet::Util::Encrypt.encrypt(@new_data, Puppet::Util::Artifacts::TRANSACTIONSTORE)
+    
+    if @new_data.is_a?(Hash)
+      @new_data.each do |key, value|
+        puts key.to_s + " : " + value.to_s
+      end
+    end
+
+    # In case the 'secure_artifacts' setting is set to false, we might get plain text hash back
+    # and in that case we want to write it as a yaml file.
+    # When it actually gets encrypted then we can write it directly. 
+    # ACTUALLY DISREGARD THE ABOVE
     Puppet::Util::Yaml.dump(encrypted_new_data, Puppet[:transactionstorefile])
 
     # Puppet::Util::Yaml.dump(@new_data, Puppet[:transactionstorefile])
