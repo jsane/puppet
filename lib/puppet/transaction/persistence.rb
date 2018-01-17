@@ -13,6 +13,10 @@ class Puppet::Transaction::Persistence
     @new_data = {"resources" => {}}
   end
 
+  def bin_to_hex(s)
+    s.each_byte.map { |b| b.to_s(16) }.join
+  end
+
   # Obtain the full raw data from the persistence store.
   # @return [Hash] hash of data stored in persistence store
   def data
@@ -66,8 +70,9 @@ class Puppet::Transaction::Persistence
     Puppet::Util.benchmark(:debug, _("Loaded transaction store file in %{seconds} seconds")) do
       begin
         yaml = YAML.load_file(filename)
-        dec_file_cont = Puppet::Util::Encrypt.decrypt(yaml, Puppet::Util::Artifacts::TRANSACTIONSTORE)
-        result = Puppet::Util::Yaml.load(dec_file_cont, false, true)
+        # puts "Encrypted yaml: " + bin_to_hex(yaml)
+        result = Puppet::Util::Encrypt.decrypt(yaml, Puppet::Util::Artifacts::TRANSACTIONSTORE)
+        # result = Puppet::Util::Yaml.load(dec_file_cont, false, true)
        
         if result.is_a?(Hash)
           result.each do |key, value|
@@ -104,11 +109,34 @@ class Puppet::Transaction::Persistence
 
     encrypted_new_data = Puppet::Util::Encrypt.encrypt(@new_data, Puppet::Util::Artifacts::TRANSACTIONSTORE)
     
+=begin
     if @new_data.is_a?(Hash)
       @new_data.each do |key, value|
         puts key.to_s + " : " + value.to_s
       end
     end
+    md = Marshal.dump(@new_data)
+    puts "Marshaled new_data: " + md
+    ml = Marshal.load(md)
+    puts "Marshal load of md: "
+    if ml.is_a?(Hash)
+      ml.each do |key, value|
+        puts key.to_s + " : " + value.to_s
+      end
+    else
+      puts "Data after marshal load: " + ml
+    end
+
+    puts("Encrypted transaction store: " + bin_to_hex(encrypted_new_data))
+
+    original_pt = Puppet::Util::Encrypt.decrypt(encrypted_new_data, Puppet::Util::Artifacts::TRANSACTIONSTORE)
+    if original_pt.is_a?(Hash)
+      puts "Original text: "
+      original_pt.each do |key, value|
+        puts key.to_s + " : " + value.to_s
+      end
+    end
+=end
 
     # In case the 'secure_artifacts' setting is set to false, we might get plain text hash back
     # and in that case we want to write it as a yaml file.

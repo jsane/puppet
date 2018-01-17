@@ -10,7 +10,7 @@ end
 class Puppet::Util::Encrypt
 
   def self.my_puts(str)
-    puts(str)
+    # puts(str)
   end
 
   # Some class variables to maintain state
@@ -46,7 +46,6 @@ class Puppet::Util::Encrypt
   def self.save_key_material()
 
     my_puts "Puppet::Util::Encrypt.save_key_material invoked"
-    puts "Puppet::Util::Encrypt.save_key_material invoked"
     if @@km_file == nil
        @@km_file = Puppet[:enckeymaterialfile]
     end
@@ -75,7 +74,6 @@ class Puppet::Util::Encrypt
   def self.read_key_material()
   
     my_puts "Puppet::Util::Encrypt.read_key_material invoked"
-    puts "Puppet::Util::Encrypt.read_key_material invoked"
 
     if @@km_file == nil
        @@km_file = Puppet[:enckeymaterialfile]
@@ -256,7 +254,6 @@ class Puppet::Util::Encrypt
     if dec_cipher != nil
       # We base the decision to decrypt solely on the artifact_encrypted flag.
       if artifact == Puppet::Util::Artifacts::CATALOG
-        my_puts("Inside decrypt: value of @@km[catalog_encrypted]: " + @@km["catalog_encrypted"].to_s)
         if @@km["catalog_encrypted"] 
           plaintext = Marshal.load(dec_cipher.update(to_decrypt) + dec_cipher.final)
           my_puts("Decrypted catalog contents...") 
