@@ -74,11 +74,13 @@ class Puppet::Transaction::Persistence
         result = Puppet::Util::Encrypt.decrypt(yaml, Puppet::Util::Artifacts::TRANSACTIONSTORE)
         # result = Puppet::Util::Yaml.load(dec_file_cont, false, true)
        
+=begin
         if result.is_a?(Hash)
           result.each do |key, value|
             puts key.to_s + " : " + value.to_s
           end
         end
+=end
 
         # result = Puppet::Util::Yaml.load_file(filename, false, true)
       rescue Puppet::Util::Yaml::YamlLoadError => detail
