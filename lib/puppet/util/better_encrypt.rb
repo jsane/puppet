@@ -1,3 +1,4 @@
+require 'yaml'
 require 'puppet/util/platform'
 
 # An enum simulation to enable providing some context to encrypt/decrypt routines
@@ -194,7 +195,7 @@ class Puppet::Util::Encrypt
           my_puts("Secure_artifacts enabled. Marking the transactionstore as being encrypted. Flagging for saving km")
         end
       end 
-      enc_data = enc_cipher.update(Marshal.dump(to_encrypt)) + enc_cipher.final
+      enc_data = enc_cipher.update(YAML.dump(to_encrypt)) + enc_cipher.final
     else
       if artifact == Puppet::Util::Artifacts::CATALOG
         if @@km["catalog_encrypted"] == true
@@ -255,7 +256,7 @@ class Puppet::Util::Encrypt
       # We base the decision to decrypt solely on the artifact_encrypted flag.
       if artifact == Puppet::Util::Artifacts::CATALOG
         if @@km["catalog_encrypted"] 
-          plaintext = Marshal.load(dec_cipher.update(to_decrypt) + dec_cipher.final)
+          plaintext = YAML.safe_load(dec_cipher.update(to_decrypt) + dec_cipher.final)
           my_puts("Decrypted catalog contents...") 
         else
           plaintext = to_decrypt
@@ -263,7 +264,7 @@ class Puppet::Util::Encrypt
         # plaintext = @@km["catalog_encrypted"] ? Marshal.load(dec_cipher.update(to_decrypt) + dec_cipher.final) : to_decrypt
       elsif artifact == Puppet::Util::Artifacts::TRANSACTIONSTORE
         if @@km["transactstore_encrypted"] 
-          plaintext = Marshal.load(dec_cipher.update(to_decrypt) + dec_cipher.final)
+          plaintext = YAML.safe_load(dec_cipher.update(to_decrypt) + dec_cipher.final)
           my_puts("Decrypted transactionstore contents...") 
         else
           plaintext = to_decrypt
