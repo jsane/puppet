@@ -72,8 +72,10 @@ class Puppet::Transaction::Persistence
         yaml = YAML.load_file(filename)
         # puts "Encrypted yaml: " + bin_to_hex(yaml)
         result = Puppet::Util::Encrypt.decrypt(yaml, Puppet::Util::Artifacts::TRANSACTIONSTORE)
-        # result = Puppet::Util::Yaml.load(dec_file_cont, false, true)
-       
+        if result == nil
+          return
+        end
+
 =begin
         if result.is_a?(Hash)
           result.each do |key, value|
@@ -81,8 +83,6 @@ class Puppet::Transaction::Persistence
           end
         end
 =end
-
-        # result = Puppet::Util::Yaml.load_file(filename, false, true)
       rescue Puppet::Util::Yaml::YamlLoadError => detail
         Puppet.log_exception(detail, _("Transaction store file %{filename} is corrupt (%{detail}); replacing") % { filename: filename, detail: detail }, { :level => :warning })
 

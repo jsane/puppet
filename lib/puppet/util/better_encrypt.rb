@@ -11,7 +11,11 @@ end
 class Puppet::Util::Encrypt
 
   def self.my_puts(str)
-    # puts(str)
+    puts(str)
+  end
+
+  def self.bin_to_hex(s)
+    s.each_byte.map { |b| b.to_s(16) }.join
   end
 
   # Some class variables to maintain state
@@ -33,10 +37,12 @@ class Puppet::Util::Encrypt
     @@km["catalog_key"] = cipher.random_key
     @@km["catalog_iv"] = cipher.random_iv
     @@km["catalog_encrypted"] = false
+    @@km["catalog_hash"] = 'dummy'
 
     @@km["transactstore_key"] = cipher.random_key
     @@km["transactstore_iv"] = cipher.random_iv
     @@km["transactstore_encrypted"] = false
+    @@km["transactstore_hash"] = 'dummy'
 
     @@km["needs_to_be_persisted"] = true
       
@@ -188,14 +194,32 @@ class Puppet::Util::Encrypt
           need_to_update = need_to_update || true
           my_puts("Secure_artifacts enabled. Marking the catalog as being encrypted. Flagging for saving km")
         end
+        interim_yaml = YAML.dump(to_encrypt)
+        enc_data = enc_cipher.update(interim_yaml) + enc_cipher.final
+        hash = Digest::SHA256.hexdigest(enc_data)
+        if hash != @@km["catalog_hash"]
+          @@km["transactstore_hash"] = hash
+          need_to_update = true
+        end
       elsif artifact == Puppet::Util::Artifacts::TRANSACTIONSTORE
         if @@km["transactstore_encrypted"] == false
           @@km["transactstore_encrypted"] = true
           need_to_update = need_to_update || true
           my_puts("Secure_artifacts enabled. Marking the transactionstore as being encrypted. Flagging for saving km")
         end
+        interim_yaml = YAML.dump(to_encrypt)
+        enc_data = enc_cipher.update(interim_yaml) + enc_cipher.final
+        hash = Digest::SHA256.hexdigest(enc_data)
+        if hash != @@km["transactstore_hash"]
+          @@km["transactstore_hash"] = hash
+          need_to_update = true
+        end
       end 
-      enc_data = enc_cipher.update(YAML.dump(to_encrypt)) + enc_cipher.final
+      if artifact == Puppet::Util::Artifacts::TRANSACTIONSTORE
+        my_puts("Tx store before enc: " + interim_yaml)
+        my_puts("Encrypted contents: " + bin_to_hex(enc_data))
+      end
+      
     else
       if artifact == Puppet::Util::Artifacts::CATALOG
         if @@km["catalog_encrypted"] == true
@@ -252,10 +276,17 @@ class Puppet::Util::Encrypt
       return to_decrypt
     end
 
+    my_puts("got cipher...")
+
     if dec_cipher != nil
       # We base the decision to decrypt solely on the artifact_encrypted flag.
       if artifact == Puppet::Util::Artifacts::CATALOG
+        my_puts("CATALOG artifact")
         if @@km["catalog_encrypted"] 
+          if @@km["catalog_hash"] != Digest::SHA256.hexdigest(to_decrypt)
+            # TODO - We would want to throw an exception in such cases
+            return nil
+          end
           plaintext = YAML.safe_load(dec_cipher.update(to_decrypt) + dec_cipher.final)
           my_puts("Decrypted catalog contents...") 
         else
@@ -263,10 +294,18 @@ class Puppet::Util::Encrypt
         end
         # plaintext = @@km["catalog_encrypted"] ? Marshal.load(dec_cipher.update(to_decrypt) + dec_cipher.final) : to_decrypt
       elsif artifact == Puppet::Util::Artifacts::TRANSACTIONSTORE
+        my_puts("TRANSACTIONSTORE artifact")
         if @@km["transactstore_encrypted"] 
-          plaintext = YAML.safe_load(dec_cipher.update(to_decrypt) + dec_cipher.final)
+          if @@km["transactstore_hash"] != Digest::SHA256.hexdigest(to_decrypt)
+            return nil
+          end
+          my_puts("To be decrypted contents: " + bin_to_hex(to_decrypt))
+          raw_yaml = dec_cipher.update(to_decrypt) + dec_cipher.final
           my_puts("Decrypted transactionstore contents...") 
+          puts "Decrypted tx store: " + raw_yaml
+          plaintext = YAML.safe_load(raw_yaml)
         else
+          my_puts("Bypassing decryption...")
           plaintext = to_decrypt
         end
         # plaintext = @@km["transactstore_encrypted"] ? Marshal.load(dec_cipher.update(to_decrypt) + dec_cipher.final) : to_decrypt
@@ -280,6 +319,8 @@ class Puppet::Util::Encrypt
       if Puppet[:secure_artifacts] == false
         plaintext = to_decrypt
         my_puts("Secure artifacts is set to false.")
+      else
+        my_puts("dec_cipher is null but secure artifacts has been set")
       end
     end
 
