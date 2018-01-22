@@ -287,7 +287,7 @@ class Puppet::Util::Encrypt
             # TODO - We would want to throw an exception in such cases
             return nil
           end
-          plaintext = YAML.safe_load(dec_cipher.update(to_decrypt) + dec_cipher.final)
+          plaintext = YAML.load(dec_cipher.update(to_decrypt) + dec_cipher.final)
           my_puts("Decrypted catalog contents...") 
         else
           plaintext = to_decrypt
@@ -301,9 +301,8 @@ class Puppet::Util::Encrypt
           end
           my_puts("To be decrypted contents: " + bin_to_hex(to_decrypt))
           raw_yaml = dec_cipher.update(to_decrypt) + dec_cipher.final
-          my_puts("Decrypted transactionstore contents...") 
-          puts "Decrypted tx store: " + raw_yaml
-          plaintext = YAML.safe_load(raw_yaml)
+          my_puts "Decrypted tx store: " + raw_yaml
+          plaintext = YAML.load(raw_yaml)
         else
           my_puts("Bypassing decryption...")
           plaintext = to_decrypt

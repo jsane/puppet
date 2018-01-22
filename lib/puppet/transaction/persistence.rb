@@ -69,6 +69,7 @@ class Puppet::Transaction::Persistence
     result = nil
     Puppet::Util.benchmark(:debug, _("Loaded transaction store file in %{seconds} seconds")) do
       begin
+=begin
         yaml = YAML.load_file(filename)
         # puts "Encrypted yaml: " + bin_to_hex(yaml)
         result = Puppet::Util::Encrypt.decrypt(yaml, Puppet::Util::Artifacts::TRANSACTIONSTORE)
@@ -76,13 +77,15 @@ class Puppet::Transaction::Persistence
           return
         end
 
-=begin
         if result.is_a?(Hash)
           result.each do |key, value|
             puts key.to_s + " : " + value.to_s
           end
         end
 =end
+      result = Puppet::Util::Yaml.load_file(filename, false, true)
+      puts("Loaded transaction store: ")
+      puts(result)
       rescue Puppet::Util::Yaml::YamlLoadError => detail
         Puppet.log_exception(detail, _("Transaction store file %{filename} is corrupt (%{detail}); replacing") % { filename: filename, detail: detail }, { :level => :warning })
 
@@ -109,9 +112,9 @@ class Puppet::Transaction::Persistence
   def save
     puts 'Inside Puppet::Transaction::Persistence.save method'
 
+=begin
     encrypted_new_data = Puppet::Util::Encrypt.encrypt(@new_data, Puppet::Util::Artifacts::TRANSACTIONSTORE)
     
-=begin
     if @new_data.is_a?(Hash)
       @new_data.each do |key, value|
         puts key.to_s + " : " + value.to_s
@@ -138,15 +141,15 @@ class Puppet::Transaction::Persistence
         puts key.to_s + " : " + value.to_s
       end
     end
-=end
 
     # In case the 'secure_artifacts' setting is set to false, we might get plain text hash back
     # and in that case we want to write it as a yaml file.
     # When it actually gets encrypted then we can write it directly. 
     # ACTUALLY DISREGARD THE ABOVE
     Puppet::Util::Yaml.dump(encrypted_new_data, Puppet[:transactionstorefile])
+=end
 
-    # Puppet::Util::Yaml.dump(@new_data, Puppet[:transactionstorefile])
+    Puppet::Util::Yaml.dump(@new_data, Puppet[:transactionstorefile])
   end
 
   # Use the catalog and run_mode to determine if persistence should be enabled or not
