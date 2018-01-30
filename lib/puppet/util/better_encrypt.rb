@@ -182,7 +182,7 @@ class Puppet::Util::Encrypt
     if @@km != nil
       need_to_update = @@km["needs_to_be_persisted"]
     else
-      need_to_update = true   # Just update the km on disk to be safe
+      need_to_update = true   # REMIND/TODO (remove it once everything works) Just update the km on disk to be safe
     end
 
     if Puppet[:secure_artifacts] && enc_cipher
@@ -217,7 +217,7 @@ class Puppet::Util::Encrypt
       end 
       if artifact == Puppet::Util::Artifacts::TRANSACTIONSTORE
         my_puts("Tx store before enc: " + interim_yaml)
-        my_puts("Encrypted contents: " + bin_to_hex(enc_data))
+        my_puts("Encrypted contents hash: " + hash)
       end
       
     else
@@ -285,6 +285,7 @@ class Puppet::Util::Encrypt
         if @@km["catalog_encrypted"] 
           if @@km["catalog_hash"] != Digest::SHA256.hexdigest(to_decrypt)
             # TODO - We would want to throw an exception in such cases
+            puts "Got a hash mismatch on encrypted catalog"
             return nil
           end
           plaintext = YAML.load(dec_cipher.update(to_decrypt) + dec_cipher.final)
@@ -297,11 +298,11 @@ class Puppet::Util::Encrypt
         my_puts("TRANSACTIONSTORE artifact")
         if @@km["transactstore_encrypted"] 
           if @@km["transactstore_hash"] != Digest::SHA256.hexdigest(to_decrypt)
+            puts "Got a hash mismatch on transaction store"
             return nil
           end
-          my_puts("To be decrypted contents: " + bin_to_hex(to_decrypt))
+          my_puts("Hash of to be decrypted contents: " + @@km["transactstore_hash"])
           raw_yaml = dec_cipher.update(to_decrypt) + dec_cipher.final
-          my_puts "Decrypted tx store: " + raw_yaml
           plaintext = YAML.load(raw_yaml)
         else
           my_puts("Bypassing decryption...")
