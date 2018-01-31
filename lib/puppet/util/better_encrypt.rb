@@ -90,6 +90,7 @@ class Puppet::Util::Encrypt
        @@pkey_file = Puppet[:hostprivkey]
     end
 
+    my_puts ("Puppet::Util::Encrypt.read_key_material km_file: " + @@km_file + ", priv key file: " + @@pkey_file)
     if !File.exist?(@@km_file)
       my_puts("read_key_material: file does not exist")
       return nil
@@ -101,7 +102,9 @@ class Puppet::Util::Encrypt
       dec_km = rsa_key.private_decrypt(enc_km)
       @@km = Marshal.load(dec_km)
       my_puts("read_key_material: Loaded key material from file...")
-      my_puts(@@km)
+      if !@@km.nil?
+        my_puts(@@km)
+      end
     end
     
     @@km
@@ -174,6 +177,7 @@ class Puppet::Util::Encrypt
     need_to_update = false
 
     enc_cipher = get_cipher(true, artifact)
+    my_puts("Puppet::Util::Encrypt.encrypt - After get_cipher...")
 
     # REMIND/TODO:
     # If secure_artifacts is set to true but we don't have an cipher object from above
@@ -198,7 +202,7 @@ class Puppet::Util::Encrypt
         enc_data = enc_cipher.update(interim_yaml) + enc_cipher.final
         hash = Digest::SHA256.hexdigest(enc_data)
         if hash != @@km["catalog_hash"]
-          @@km["transactstore_hash"] = hash
+          @@km["catalog_hash"] = hash
           need_to_update = true
         end
       elsif artifact == Puppet::Util::Artifacts::TRANSACTIONSTORE
@@ -217,7 +221,7 @@ class Puppet::Util::Encrypt
       end 
       if artifact == Puppet::Util::Artifacts::TRANSACTIONSTORE
         my_puts("Tx store before enc: " + interim_yaml)
-        my_puts("Encrypted contents hash: " + hash)
+        my_puts("Encrypted contents hash: " + @@km["transactstore_hash"])
       end
       
     else
